@@ -63,18 +63,21 @@ GITHUB_REPO_URL=https://github.com/<tu-usuario>/contactship.git
 
 ### 2.2 Copiar credenciales
 
-Una vez creado, navegá:
+> 🔄 **Importante — sistema nuevo de API keys.** Supabase migró del esquema viejo de JWTs (`anon` + `service_role`) a un sistema nuevo (`sb_publishable_...` + `sb_secret_...`). Los viejos siguen funcionando pero arrancamos directo con los nuevos.
 
-#### URL del proyecto y anon key
-- Sidebar izquierdo → **Project Settings** (ícono engranaje) → **Data API**.
+Una vez creado el proyecto, navegá:
+
+#### URL del proyecto y publishable key
+- Sidebar izquierdo → **Project Settings** (ícono engranaje) → **API Keys**.
+- Si ves un toggle/tab que dice **New API Keys** y **Legacy API Keys**, andá a **New API Keys**.
 - Copiá:
-  - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
-  - **anon public** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - **Project URL** (arriba de la página, o en **Data API** según versión) → `NEXT_PUBLIC_SUPABASE_URL`
+  - **Publishable key** (`sb_publishable_...`) → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-#### Service role key
-- En la misma página **Data API** (o en **API Keys** según versión de UI):
-  - **service_role** (secreto, ojo) → `SUPABASE_SERVICE_ROLE_KEY`
-- **⚠️ Esta key es admin total al schema. Nunca la expongas al cliente.**
+#### Secret key (server-side)
+- En la misma página **API Keys**:
+  - **Secret key** (`sb_secret_...`) → `SUPABASE_SECRET_KEY`
+- **⚠️ Esta key es admin total al schema. Nunca la expongas al cliente. Nunca la pongas en `.env.example`.**
 
 #### Connection string (para Drizzle)
 - Sidebar → **Project Settings** → **Database** → **Connection string** → tab **URI**.
@@ -93,11 +96,13 @@ Esto lo hacemos **después** de correr las migraciones (te lo recuerdo cuando ll
 ### Qué guardar
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 DATABASE_URL=postgresql://postgres.<ref>:[PASSWORD]@aws-0-<region>.pooler.supabase.com:6543/postgres
 DIRECT_URL=postgresql://postgres.<ref>:[PASSWORD]@aws-0-<region>.pooler.supabase.com:5432/postgres
 ```
+
+> 🛑 Estos valores **solo** van a `.env.local` (que está en `.gitignore`). `.env.example` queda con placeholders, **nunca** con secretos reales aunque estén comentados — quedan en el historial de git.
 
 ---
 
@@ -450,10 +455,10 @@ Una vez que tengas todos los valores, te van a quedar así (yo te genero el `.en
 # --- App ---
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# --- Supabase ---
+# --- Supabase (new key system) ---
 NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 
 # --- Database (Drizzle) ---
 DATABASE_URL=postgresql://postgres.<ref>:[PASSWORD]@aws-0-<region>.pooler.supabase.com:6543/postgres
