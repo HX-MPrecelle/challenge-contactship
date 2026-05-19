@@ -1,0 +1,36 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "@contactship/db": ["../../packages/db/src/index.ts"],
+      "@contactship/db/*": ["../../packages/db/src/*"],
+      "@contactship/hubspot": ["../../packages/hubspot/src/index.ts"],
+      "@contactship/hubspot/*": ["../../packages/hubspot/src/*"],
+      "@contactship/ai": ["../../packages/ai/src/index.ts"],
+      "@contactship/ai/*": ["../../packages/ai/src/*"],
+      "@contactship/ui": ["../../packages/ui/src/index.ts"],
+      "@contactship/ui/*": ["../../packages/ui/src/*"],
+      "@contactship/shared": ["../../packages/shared/src/index.ts"],
+      "@contactship/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules", ".next", ".turbo"]
+}
