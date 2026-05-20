@@ -47,6 +47,7 @@ export default async function OnboardingPage({ searchParams }: Props) {
         initialOrgName={org?.name ?? ""}
         hubspotConnected={Boolean(connection) && !connection?.needs_reconnect}
         hubspotPortalName={connection?.portal_name ?? null}
+        orgId={orgId}
         callbackError={params.error}
       />
     </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -10,12 +10,16 @@ import {
   PlugZap,
   Sparkles,
   Users,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { createClient } from "@/lib/supabase/client";
 import {
+  importContacts,
   markOnboardingComplete,
   previewContactCount,
   updateOrganizationName,
@@ -28,11 +32,16 @@ const STEPS = [
   { id: 4, label: "Sincronización" },
 ] as const;
 
+export type Selection =
+  | { mode: "all" }
+  | { mode: "lifecycle"; lifecycleStage: string };
+
 type Props = {
   initialStep: number;
   initialOrgName: string;
   hubspotConnected: boolean;
   hubspotPortalName: string | null;
+  orgId: string;
   callbackError?: string;
 };
 
@@ -41,10 +50,11 @@ export function OnboardingStepper({
   initialOrgName,
   hubspotConnected,
   hubspotPortalName,
+  orgId,
   callbackError,
 }: Props) {
-  const router = useRouter();
   const [step, setStep] = useState(initialStep);
+  const [selection, setSelection] = useState<Selection>({ mode: "all" });
 
   useEffect(() => {
     if (!callbackError) return;
@@ -56,8 +66,7 @@ export function OnboardingStepper({
       "no-org": "Tu sesión perdió la organización. Volvé a entrar.",
     };
     toast.error(
-      errorMessages[callbackError] ??
-        `Error en HubSpot: ${callbackError}`
+      errorMessages[callbackError] ?? `Error en HubSpot: ${callbackError}`
     );
   }, [callbackError]);
 
@@ -81,23 +90,13 @@ export function OnboardingStepper({
         )}
         {step === 3 && (
           <SelectStep
+            selection={selection}
+            onSelectionChange={setSelection}
             onContinue={() => setStep(4)}
             onBack={() => setStep(2)}
           />
         )}
-        {step === 4 && (
-          <SyncStep
-            onSkip={async () => {
-              const result = await markOnboardingComplete();
-              if (!result.success) {
-                toast.error(result.error);
-                return;
-              }
-              router.push("/contacts");
-              router.refresh();
-            }}
-          />
-        )}
+        {step === 4 && <SyncStep orgId={orgId} selection={selection} />}
       </div>
     </div>
   );
@@ -161,7 +160,6 @@ function WelcomeStep({
       toast.error("Ingresá un nombre para la organización");
       return;
     }
-
     startTransition(async () => {
       const result = await updateOrganizationName({ name });
       if (!result.success) {
@@ -278,18 +276,17 @@ function ConnectStep({
   );
 }
 
-type Selection =
-  | { mode: "all" }
-  | { mode: "lifecycle"; lifecycleStage: string };
-
 function SelectStep({
+  selection,
+  onSelectionChange,
   onContinue,
   onBack,
 }: {
+  selection: Selection;
+  onSelectionChange: (s: Selection) => void;
   onContinue: () => void;
   onBack: () => void;
 }) {
-  const [selection, setSelection] = useState<Selection>({ mode: "all" });
   const [count, setCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -310,8 +307,6 @@ function SelectStep({
   }
 
   useEffect(() => {
-    // Auto-load the "all" count on first paint so the user sees a number
-    // immediately and isn't staring at a blank state.
     void loadPreview({ mode: "all" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -339,7 +334,7 @@ function SelectStep({
           checked={selection.mode === "all"}
           onSelect={() => {
             const next: Selection = { mode: "all" };
-            setSelection(next);
+            onSelectionChange(next);
             void loadPreview(next);
           }}
         />
@@ -348,11 +343,8 @@ function SelectStep({
           description="Por ejemplo: lead, opportunity, customer."
           checked={selection.mode === "lifecycle"}
           onSelect={() => {
-            const next: Selection = {
-              mode: "lifecycle",
-              lifecycleStage: "lead",
-            };
-            setSelection(next);
+            const next: Selection = { mode: "lifecycle", lifecycleStage: "lead" };
+            onSelectionChange(next);
             void loadPreview(next);
           }}
         />
@@ -368,13 +360,12 @@ function SelectStep({
             <Input
               id="lifecycleStage"
               value={selection.lifecycleStage}
-              onChange={(e) => {
-                const next: Selection = {
+              onChange={(e) =>
+                onSelectionChange({
                   mode: "lifecycle",
                   lifecycleStage: e.target.value,
-                };
-                setSelection(next);
-              }}
+                })
+              }
               onBlur={() => loadPreview(selection)}
               placeholder="lead"
               className="h-9"
@@ -408,10 +399,7 @@ function SelectStep({
         <Button variant="ghost" onClick={onBack}>
           Volver
         </Button>
-        <Button
-          onClick={onContinue}
-          disabled={count === null || count === 0}
-        >
+        <Button onClick={onContinue} disabled={count === null || count === 0}>
           <span>Importar</span>
           <ArrowRight size={14} />
         </Button>
@@ -460,46 +448,150 @@ function SelectionOption({
   );
 }
 
-function SyncStep({ onSkip }: { onSkip: () => void | Promise<void> }) {
-  const [isFinishing, setIsFinishing] = useState(false);
+function SyncStep({ orgId, selection }: { orgId: string; selection: Selection }) {
+  const router = useRouter();
+  const [progress, setProgress] = useState({ processed: 0, total: 0 });
+  const [phase, setPhase] = useState<"connecting" | "syncing" | "done" | "error">(
+    "connecting"
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    let cancelled = false;
+    const supabase = createClient();
+    const channel = supabase.channel(`sync:${orgId}`);
+
+    channel
+      .on("broadcast", { event: "progress" }, ({ payload }) => {
+        if (cancelled) return;
+        const p = payload as {
+          processed: number;
+          total: number;
+          status: "syncing" | "done" | "error";
+        };
+        setProgress({ processed: p.processed, total: p.total });
+        if (p.status === "syncing") setPhase("syncing");
+      })
+      .subscribe(async (status) => {
+        if (status !== "SUBSCRIBED" || cancelled) return;
+        setPhase("syncing");
+
+        const filter =
+          selection.mode === "lifecycle"
+            ? { lifecycleStage: selection.lifecycleStage }
+            : {};
+        const result = await importContacts(filter);
+        if (cancelled) return;
+
+        if (!result.success) {
+          setErrorMessage(result.error);
+          setPhase("error");
+          toast.error(result.error);
+          return;
+        }
+
+        const completeResult = await markOnboardingComplete();
+        if (cancelled) return;
+
+        if (!completeResult.success) {
+          setErrorMessage(completeResult.error);
+          setPhase("error");
+          toast.error(completeResult.error);
+          return;
+        }
+
+        setPhase("done");
+        if (result.data.conflicts > 0) {
+          toast.warning(
+            `${result.data.conflicts} contacto(s) con conflicto detectado. Resolvelos desde Settings.`
+          );
+        } else {
+          toast.success(
+            `Importamos ${result.data.imported} contacto${result.data.imported === 1 ? "" : "s"}.`
+          );
+        }
+        setTimeout(() => {
+          if (cancelled) return;
+          router.push("/contacts");
+          router.refresh();
+        }, 1200);
+      });
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [orgId, selection, router]);
+
+  const pct =
+    progress.total > 0 ? Math.round((progress.processed / progress.total) * 100) : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col items-center gap-3 text-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-warning-subtle text-warning">
-          <Loader2 size={20} className="animate-spin" />
+        <div
+          className={[
+            "flex h-11 w-11 items-center justify-center rounded-xl",
+            phase === "done"
+              ? "bg-success-subtle text-success"
+              : phase === "error"
+                ? "bg-error-subtle text-error"
+                : "bg-brand-subtle text-brand",
+          ].join(" ")}
+        >
+          {phase === "done" ? (
+            <CheckCircle2 size={20} />
+          ) : phase === "error" ? (
+            <XCircle size={20} />
+          ) : (
+            <Loader2 size={20} className="animate-spin" />
+          )}
         </div>
         <div className="flex flex-col gap-1.5">
           <h2 className="font-heading text-xl font-semibold text-text-primary">
-            Sincronizando tus contactos
+            {phase === "done"
+              ? "Sincronización completa"
+              : phase === "error"
+                ? "Hubo un error"
+                : "Sincronizando tus contactos"}
           </h2>
           <p className="text-sm text-text-secondary">
-            El sync engine de la app se conecta acá. Por ahora, podés saltar
-            directo a ver el workspace; el siguiente bloque de implementación
-            cablea el import real con barra de progreso en tiempo real.
+            {phase === "done"
+              ? "Te llevamos al workspace en un segundo..."
+              : phase === "error"
+                ? errorMessage ?? "Intentá refrescar la página."
+                : "Esto puede tardar unos segundos. No cierres la ventana."}
           </p>
         </div>
       </header>
 
-      <Button
-        onClick={async () => {
-          setIsFinishing(true);
-          await onSkip();
-        }}
-        disabled={isFinishing}
-      >
-        {isFinishing ? (
-          <>
-            <Loader2 size={14} className="animate-spin" />
-            <span>Finalizando...</span>
-          </>
-        ) : (
-          <>
-            <span>Ir al workspace</span>
-            <ArrowRight size={14} />
-          </>
-        )}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Progress value={pct} className="h-2" />
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-mono text-text-secondary">
+            {progress.processed} / {progress.total || "?"}
+          </span>
+          <span className="font-mono text-text-secondary">{pct}%</span>
+        </div>
+      </div>
+
+      {phase === "error" && (
+        <Button
+          onClick={() => {
+            startedRef.current = false;
+            setPhase("connecting");
+            setErrorMessage(null);
+            setProgress({ processed: 0, total: 0 });
+          }}
+          className="self-end"
+        >
+          Reintentar
+        </Button>
+      )}
     </div>
   );
 }
