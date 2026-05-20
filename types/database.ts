@@ -312,6 +312,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_hubspot_token_secret: {
+        Args: { label: string; token: string }
+        Returns: string
+      }
+      get_hubspot_token_secret: { Args: { secret_id: string }; Returns: string }
       match_contacts: {
         Args: {
           match_count?: number
@@ -333,6 +338,10 @@ export type Database = {
           similarity: number
           sync_status: string
         }[]
+      }
+      update_hubspot_token_secret: {
+        Args: { new_token: string; secret_id: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -469,4 +478,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

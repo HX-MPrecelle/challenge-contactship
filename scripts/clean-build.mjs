@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 const isWindows = process.platform === "win32";
 const cwd = process.cwd();
-const projectInOneDrive = isWindows && /onedrive/i.test(cwd);
 
-const distDir = projectInOneDrive
-  ? path.join(os.homedir(), "AppData", "Local", "contactship-build", ".next")
-  : path.join(cwd, ".next");
+const distDir = path.join(cwd, ".next");
 
 function killStaleNextWorkers() {
   if (!isWindows) {
