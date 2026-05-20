@@ -1,64 +1,72 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowRight, CheckCircle2, Loader2, Mail } from "lucide-react";
+import { ArrowRight, KeyRound, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { sendMagicLink } from "./actions";
+import { signIn, signUp } from "./actions";
 
-type FormStatus =
-  | { state: "idle" }
-  | { state: "submitting" }
-  | { state: "sent"; email: string }
-  | { state: "error"; message: string };
+type Mode = "signin" | "signup";
+
+type FieldErrors = {
+  email?: string;
+  password?: string;
+  form?: string;
+};
+
+const COPY: Record<Mode, {
+  submit: string;
+  submitting: string;
+  toggleQuestion: string;
+  toggleAction: string;
+  helper: string;
+}> = {
+  signin: {
+    submit: "Iniciar sesión",
+    submitting: "Iniciando sesión...",
+    toggleQuestion: "¿No tenés cuenta?",
+    toggleAction: "Crear una",
+    helper: "Usá el email y contraseña con los que te registraste.",
+  },
+  signup: {
+    submit: "Crear cuenta",
+    submitting: "Creando cuenta...",
+    toggleQuestion: "¿Ya tenés cuenta?",
+    toggleAction: "Iniciar sesión",
+    helper: "La contraseña debe tener al menos 8 caracteres.",
+  },
+};
 
 export function LoginForm() {
-  const [status, setStatus] = useState<FormStatus>({ state: "idle" });
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("signin");
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
 
+  const copy = COPY[mode];
+
   function handleSubmit(formData: FormData) {
-    const email = String(formData.get("email") ?? "");
-    setStatus({ state: "submitting" });
+    setErrors({});
 
     startTransition(async () => {
-      const result = await sendMagicLink(formData);
+      const action = mode === "signin" ? signIn : signUp;
+      const result = await action(formData);
+
       if (!result.success) {
-        setStatus({ state: "error", message: result.error });
+        if (result.field) {
+          setErrors({ [result.field]: result.error });
+        } else {
+          setErrors({ form: result.error });
+        }
         return;
       }
-      setStatus({ state: "sent", email });
+
+      router.push(result.redirectTo);
+      router.refresh();
     });
   }
-
-  if (status.state === "sent") {
-    return (
-      <div className="flex flex-col items-center gap-5 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success-subtle text-success">
-          <CheckCircle2 size={22} />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h2 className="font-heading text-lg font-semibold text-text-primary">
-            Revisá tu email
-          </h2>
-          <p className="text-sm text-text-secondary">
-            Te enviamos un link a{" "}
-            <span className="font-mono text-text-primary">{status.email}</span>.
-            Hacé click para entrar.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setStatus({ state: "idle" })}
-          className="text-xs text-text-secondary underline-offset-4 hover:text-text-primary hover:underline"
-        >
-          Usar otro email
-        </button>
-      </div>
-    );
-  }
-
-  const submitting = isPending || status.state === "submitting";
 
   return (
     <form action={handleSubmit} className="flex w-full flex-col gap-4">
@@ -78,32 +86,82 @@ export function LoginForm() {
             autoComplete="email"
             required
             placeholder="vos@empresa.com"
-            disabled={submitting}
+            disabled={isPending}
+            aria-invalid={errors.email ? "true" : undefined}
             className="h-10 pl-9"
           />
         </div>
-        {status.state === "error" && (
-          <p className="mt-1 text-xs text-error">{status.message}</p>
+        {errors.email && (
+          <p className="mt-1 text-xs text-error">{errors.email}</p>
         )}
       </div>
 
-      <Button type="submit" disabled={submitting} className="w-full">
-        {submitting ? (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="password" className="text-sm font-medium text-text-secondary">
+          Contraseña
+        </Label>
+        <div className="relative">
+          <KeyRound
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
+          />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            required
+            minLength={8}
+            maxLength={72}
+            placeholder={mode === "signin" ? "Tu contraseña" : "Al menos 8 caracteres"}
+            disabled={isPending}
+            aria-invalid={errors.password ? "true" : undefined}
+            className="h-10 pl-9"
+          />
+        </div>
+        {errors.password && (
+          <p className="mt-1 text-xs text-error">{errors.password}</p>
+        )}
+      </div>
+
+      {errors.form && (
+        <div className="rounded-lg border border-error/40 bg-error-subtle px-3 py-2 text-xs text-error">
+          {errors.form}
+        </div>
+      )}
+
+      <Button type="submit" disabled={isPending} className="w-full">
+        {isPending ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            <span>Enviando...</span>
+            <span>{copy.submitting}</span>
           </>
         ) : (
           <>
-            <span>Enviar magic link</span>
+            <span>{copy.submit}</span>
             <ArrowRight size={14} />
           </>
         )}
       </Button>
 
-      <p className="text-xs text-text-muted">
-        Te enviaremos un link único. Sin contraseñas.
+      <p className="text-center text-xs text-text-muted">
+        {copy.helper}
       </p>
+
+      <div className="flex items-center justify-center gap-1.5 pt-2 text-xs">
+        <span className="text-text-secondary">{copy.toggleQuestion}</span>
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setErrors({});
+          }}
+          disabled={isPending}
+          className="font-medium text-brand underline-offset-4 hover:underline disabled:opacity-50"
+        >
+          {copy.toggleAction}
+        </button>
+      </div>
     </form>
   );
 }

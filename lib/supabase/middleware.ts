@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 
-const PUBLIC_PREFIXES = ["/login", "/auth/", "/api/webhooks/", "/api/hubspot/callback"];
+const PUBLIC_PREFIXES = ["/login", "/api/webhooks/", "/api/hubspot/callback"];
 const ROOT_PUBLIC = new Set(["/", "/favicon.ico"]);
 
 function isPublicRoute(pathname: string): boolean {
