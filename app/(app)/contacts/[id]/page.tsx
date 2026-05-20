@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { AiInsightsPanel } from "@/components/contacts/AiInsightsPanel";
 import { ConflictBanner } from "@/components/contacts/ConflictBanner";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactTimeline } from "@/components/contacts/ContactTimeline";
@@ -146,7 +147,7 @@ export default async function ContactDetailPage({ params }: Props) {
             </dl>
           </section>
 
-          {/* AI Insights panel lands in task 14 */}
+          <AiInsightsPanel contactId={contact.id} />
         </aside>
       </div>
     </main>

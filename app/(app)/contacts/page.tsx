@@ -22,7 +22,7 @@ export default async function ContactsPage() {
   const { data: contacts, error } = await supabase
     .from("contacts")
     .select(
-      "id, first_name, last_name, email, company, job_title, lifecycle_stage, country, sync_status, local_updated_at, is_archived"
+      "id, first_name, last_name, email, company, job_title, lifecycle_stage, country, sync_status, local_updated_at, is_archived, created_at, city, lead_status"
     )
     .eq("org_id", orgId)
     .eq("is_archived", false)
