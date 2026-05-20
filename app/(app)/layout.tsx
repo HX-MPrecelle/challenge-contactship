@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
@@ -7,19 +8,27 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Middleware already guards every route under /(app), but a defensive
-  // re-check here keeps the layout self-contained: if a future routing
-  // tweak accidentally exempts (app), we still bounce unauthenticated
-  // users instead of leaking the layout shell.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  const onboardingComplete = Boolean(user.user_metadata?.onboarding_complete);
+
+  // The onboarding page renders the same shell but without the sidebar so
+  // the stepper takes the full width and isn't distracting. We pass a
+  // skipSidebar hint via the layout structure instead — every other route
+  // under (app) gets the chrome.
+  const showSidebar = orgId !== undefined && onboardingComplete;
+
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="min-h-screen bg-background text-foreground">{children}</div>
+      <div className="flex min-h-screen bg-background text-foreground">
+        {showSidebar && <Sidebar userEmail={user.email ?? ""} />}
+        <div className="flex-1">{children}</div>
+      </div>
     </TooltipProvider>
   );
 }
