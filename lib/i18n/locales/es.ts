@@ -279,8 +279,8 @@ export const es = {
   "onboarding.step.sync": "Sincronización",
 
   // ── Login ───────────────────────────────────────────────────────────────────
-  "login.brand.tagline": "A CRM workspace that mirrors HubSpot in real time.",
-  "login.brand.desc": "AI-powered insights, conflict resolution, and instant sync — built for sales teams that live in HubSpot.",
+  "login.brand.tagline": "El workspace CRM que sincroniza HubSpot en tiempo real.",
+  "login.brand.desc": "Insights con IA, resolución de conflictos y sync instantáneo — para equipos de ventas que viven en HubSpot.",
   "login.brand.year": "ContactShip v2",
   "login.heading": "Bienvenido",
   "login.subheading": "Ingresá con tu cuenta de trabajo.",
