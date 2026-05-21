@@ -25,9 +25,9 @@ export default async function AppLayout({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex min-h-screen bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden bg-background text-foreground">
         {showSidebar && <Sidebar userEmail={user.email ?? ""} />}
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </TooltipProvider>
   );

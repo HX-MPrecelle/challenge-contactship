@@ -198,5 +198,7 @@ export async function getOrGenerateInsights(
 
 function nullableContent(content: string | undefined): string | null {
   if (!content || content.trim() === "") return null;
+  // The model occasionally returns the literal string "null" instead of JSON null.
+  if (content.trim().toLowerCase() === "null") return null;
   return content;
 }

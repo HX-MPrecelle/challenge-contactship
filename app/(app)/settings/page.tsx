@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SyncHealthPanel } from "@/components/sync/SyncHealthPanel";
 import { SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsSection, SettingsRow } from "@/components/settings/SettingsSection";
+import { BackLink } from "@/components/layout/BackLink";
 import { createClient } from "@/lib/supabase/server";
 import { OrgNameForm } from "./OrgNameForm";
 import { HubSpotActions } from "./HubSpotActions";
@@ -58,6 +59,7 @@ export default async function SettingsPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
+      <BackLink />
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-text-primary">Settings</h1>
         <p className="mt-1 text-sm text-text-secondary">

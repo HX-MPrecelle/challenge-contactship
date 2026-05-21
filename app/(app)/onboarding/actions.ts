@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { countContacts, listContactsPage } from "@/lib/hubspot/contacts";
 import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
@@ -43,7 +44,10 @@ export async function updateOrganizationName(
     return { success: false, error: "Sin organización", code: "NO_ORG" };
   }
 
-  const { error } = await supabase
+  // Use service client — RLS may block user-scoped updates on the
+  // organizations table if the policy wasn't set up with an UPDATE clause.
+  const admin = createServiceClient();
+  const { error } = await admin
     .from("organizations")
     .update({ name: parsed.data.name })
     .eq("id", orgId);
@@ -58,6 +62,7 @@ export async function updateOrganizationName(
   }
 
   revalidatePath("/onboarding");
+  revalidatePath("/dashboard");
   return { success: true, data: { name: parsed.data.name } };
 }
 

@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { BackLink } from "@/components/layout/BackLink";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function ActivityPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
+      <BackLink />
       <header className="pb-6">
         <h1 className="text-2xl font-semibold text-text-primary">Activity</h1>
         <p className="mt-1 text-sm text-text-secondary">

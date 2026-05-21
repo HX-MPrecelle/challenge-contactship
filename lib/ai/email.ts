@@ -65,7 +65,7 @@ Reglas:
 - ${TONE_INSTRUCTIONS[params.tone]}
 - No inventes hechos. Si no tenés información sobre algo, no lo menciones.
 - Cerrá con una pregunta o llamado a la acción concreto.
-- No firmes con un nombre — el usuario lo agrega después.`,
+- Terminá el email con la línea de firma: "Saludos, [Tu nombre]" — el placeholder [Tu nombre] lo reemplaza el usuario.`,
       schema: EmailDraftSchema,
       prompt: `Contacto:\n${params.contactSummary}\n\nObjetivo del email: ${params.goal}\n\nGenerá el borrador.`,
     });

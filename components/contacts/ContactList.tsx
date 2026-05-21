@@ -56,6 +56,22 @@ const STATUS_LABEL: Record<SyncStatus, string> = {
   error: "con error",
 };
 
+const LIFECYCLE_FILTERS = [
+  { value: "opportunity", label: "Opportunity" },
+  { value: "salesqualifiedlead", label: "SQL" },
+  { value: "marketingqualifiedlead", label: "MQL" },
+  { value: "customer", label: "Cliente" },
+  { value: "lead", label: "Lead" },
+  { value: "subscriber", label: "Subscriber" },
+] as const;
+
+const STATUS_FILTERS: { value: SyncStatus; label: string; dot: string }[] = [
+  { value: "synced", label: "Synced", dot: "bg-success" },
+  { value: "pending", label: "Pendiente", dot: "bg-warning" },
+  { value: "conflict", label: "Conflicto", dot: "bg-error animate-pulse-dot" },
+  { value: "error", label: "Error", dot: "bg-error" },
+];
+
 export function ContactList({
   initialContacts,
   orgId,
@@ -67,6 +83,7 @@ export function ContactList({
   const [statusFilter, setStatusFilter] = useState<SyncStatus | null>(
     initialStatusFilter ?? null
   );
+  const [lifecycleFilter, setLifecycleFilter] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -118,6 +135,9 @@ export function ContactList({
     let result = contacts;
     if (statusFilter) {
       result = result.filter((c) => c.sync_status === statusFilter);
+    }
+    if (lifecycleFilter) {
+      result = result.filter((c) => c.lifecycle_stage === lifecycleFilter);
     }
     if (aiFilter) {
       result = result.filter((c) =>
@@ -192,16 +212,19 @@ export function ContactList({
     const ids = [...selected];
     startBulk(async () => {
       const { toast: t } = await import("sonner");
-      // Mark selected contacts as pending — the cron will pick them up
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
+      const { createClient: cc } = await import("@/lib/supabase/client");
+      const supabase = cc();
       const { error } = await supabase
         .from("contacts")
         .update({ sync_status: "pending" })
         .in("id", ids)
         .eq("org_id", orgId);
       if (error) { t.error(error.message); return; }
-      t.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} marcado${ids.length === 1 ? "" : "s"} para re-sync`);
+      // The realtime subscription will update each row when sync completes.
+      t.info(`${ids.length} contacto${ids.length === 1 ? "" : "s"} en cola de sync. El status se actualizará en tiempo real.`, {
+        duration: 5000,
+        icon: "🔄",
+      });
       setSelected(new Set());
     });
   }
@@ -258,26 +281,60 @@ export function ContactList({
         </Button>
       </div>
 
-      {statusFilter && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-subtle px-4 py-2.5 text-sm">
-          <span className="text-text-secondary">
-            Mostrando solo{" "}
-            <span className="font-medium text-text-primary">
-              contactos {STATUS_LABEL[statusFilter]}
-            </span>
-            .
-          </span>
+      {/* Filter pills row */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Lifecycle stage filters */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Etapa:</span>
+          {LIFECYCLE_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setLifecycleFilter(lifecycleFilter === f.value ? null : f.value)}
+              className={[
+                "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                lifecycleFilter === f.value
+                  ? "border-brand/40 bg-brand-subtle text-brand-on-subtle"
+                  : "border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary",
+              ].join(" ")}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sync status filters */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Sync:</span>
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setStatusFilter(statusFilter === f.value ? null : f.value)}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                statusFilter === f.value
+                  ? "border-brand/40 bg-brand-subtle text-brand-on-subtle"
+                  : "border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary",
+              ].join(" ")}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${f.dot}`} />
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {(statusFilter || lifecycleFilter) && (
           <button
             type="button"
-            onClick={() => setStatusFilter(null)}
-            className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary"
-            aria-label="Quitar filtro de estado"
+            onClick={() => { setStatusFilter(null); setLifecycleFilter(null); }}
+            className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary"
           >
-            <X size={14} />
-            <span>Ver todos</span>
+            <X size={12} />
+            Limpiar filtros
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {aiFilter && (
         <div className="flex items-start justify-between gap-3 rounded-lg border border-brand/40 bg-brand-subtle px-4 py-2.5">

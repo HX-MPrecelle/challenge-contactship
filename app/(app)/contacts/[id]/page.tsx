@@ -98,7 +98,7 @@ export default async function ContactDetailPage({ params }: Props) {
         )}
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <h2 className="pb-4 font-heading text-lg font-semibold text-text-primary">

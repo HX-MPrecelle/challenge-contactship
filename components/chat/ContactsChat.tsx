@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  ArrowLeft,
   ArrowUp,
   ExternalLink,
   Loader2,
@@ -15,6 +15,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
@@ -232,6 +233,14 @@ export function ContactsChat() {
         {/* Header */}
         <header className="flex items-center justify-between border-b border-border-default px-6 py-4">
           <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1 text-xs text-text-secondary transition-colors hover:text-text-primary"
+            >
+              <ArrowLeft size={12} />
+              Dashboard
+            </Link>
+            <div className="h-4 w-px bg-border-default" />
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-subtle">
               <MessageSquare size={16} className="text-brand-on-subtle" />
             </div>

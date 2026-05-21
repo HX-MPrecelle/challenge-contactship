@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function updateOrgName(
   name: string
@@ -17,7 +17,9 @@ export async function updateOrgName(
   const trimmed = name.trim();
   if (!trimmed) return { success: false, error: "El nombre no puede estar vacío" };
 
-  const { error } = await supabase
+  // Use service client to bypass RLS on organizations (same fix as onboarding)
+  const admin = createServiceClient();
+  const { error } = await admin
     .from("organizations")
     .update({ name: trimmed })
     .eq("id", orgId);

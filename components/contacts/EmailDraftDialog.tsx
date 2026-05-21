@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, Loader2, Mail, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Copy, Loader2, Mail, RefreshCw, Send, Sparkles, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +86,19 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
     } catch {
       toast.error("No pudimos copiar — copialo manualmente");
     }
+  }
+
+  function openGmail() {
+    if (!draft?.to) {
+      toast.error("Este contacto no tiene email registrado");
+      return;
+    }
+    const url =
+      `https://mail.google.com/mail/?view=cm&fs=1` +
+      `&to=${encodeURIComponent(draft.to)}` +
+      `&su=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function openMailto() {
@@ -250,9 +263,13 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
                 <Copy size={12} />
                 <span>Copiar</span>
               </Button>
+              <Button type="button" variant="secondary" onClick={openGmail} disabled={!draft.to}>
+                <ExternalLink size={12} />
+                <span>Gmail</span>
+              </Button>
               <Button type="button" onClick={openMailto} disabled={!draft.to}>
                 <Send size={12} />
-                <span>Abrir en mail</span>
+                <span>Mail del sistema</span>
               </Button>
             </>
           )}

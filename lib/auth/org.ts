@@ -78,7 +78,9 @@ export async function bootstrapOrgForUser(user: User): Promise<BootstrapResult> 
   const { data: created, error: insertError } = await admin
     .from("organizations")
     .insert({
-      name: domain,
+      // For public email domains (gmail, outlook, etc.) use a friendly default
+      // since the domain itself is meaningless as an org name.
+      name: isPublicDomain ? "Mi organización" : domain,
       email_domain: isPublicDomain ? null : domain,
     })
     .select("id")

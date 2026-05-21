@@ -4,6 +4,7 @@ import { Activity, RefreshCw } from "lucide-react";
 import { SyncHealthPanel } from "@/components/sync/SyncHealthPanel";
 import { createClient } from "@/lib/supabase/server";
 import { ResyncButton } from "./ResyncButton";
+import { BackLink } from "@/components/layout/BackLink";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function SyncPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
+      <BackLink />
       <header className="flex items-start justify-between pb-6">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Sync Health</h1>
