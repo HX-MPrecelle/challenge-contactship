@@ -52,6 +52,38 @@ export async function disconnectHubSpot(): Promise<
   redirect("/settings?section=hubspot");
 }
 
+/**
+ * Force re-embedding of all contacts in the org. Useful after expanding
+ * buildContactText to include new fields — clears existing embeddings so
+ * backfillMissingEmbeddings will regenerate them with richer context.
+ */
+export async function reembedAllContacts(): Promise<
+  { success: true; message: string } | { success: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización" };
+
+  const admin = createServiceClient();
+  const { error } = await admin
+    .from("contacts")
+    .update({ embedding: null } as never)
+    .eq("org_id", orgId)
+    .eq("is_archived", false);
+
+  if (error) return { success: false, error: error.message };
+
+  after(async () => {
+    const { backfillMissingEmbeddings } = await import("@/lib/ai/embeddings");
+    const { filled } = await backfillMissingEmbeddings(admin, orgId);
+    console.log(`[reembedAllContacts:after] re-embedded ${filled} contacts`);
+  });
+
+  return { success: true, message: "Re-embedding en proceso. Los contactos similares y el chat mejorarán en breve." };
+}
+
 export async function triggerResync(): Promise<
   { success: true; message: string } | { success: false; error: string }
 > {

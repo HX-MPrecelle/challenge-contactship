@@ -93,9 +93,14 @@ export async function generateInsightsAction(
       .eq("contact_id", contact.id);
   }
 
+  // Merge the stored properties JSONB (which has industry, notes, engagement
+  // signals, etc.) with the typed columns, so the AI has the full picture.
+  const storedProps = (contact.properties ?? {}) as Record<string, string | null>;
   const fakeHubSpot: HubSpotContact = {
     id: contact.hubspot_id,
     properties: {
+      ...storedProps,
+      // Typed columns take precedence — they're the source of truth.
       firstname: contact.first_name,
       lastname: contact.last_name,
       email: contact.email,

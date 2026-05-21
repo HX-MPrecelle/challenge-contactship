@@ -112,7 +112,7 @@ export function DashboardPriorities() {
       <footer className="flex items-center gap-1.5 border-t border-border-default pt-3 text-[10px] text-text-muted">
         <Sparkles size={10} />
         <span>
-          Top 3 elegidos por GPT sobre los 30 contactos más recientes ·
+          Top {priorities?.length ?? 0} elegidos por GPT sobre los 30 contactos más recientes ·
           regenera cada 30 minutos
         </span>
       </footer>

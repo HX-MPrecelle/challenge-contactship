@@ -30,7 +30,7 @@ export default async function ContactDetailPage({ params }: Props) {
   const { data: contact, error } = await supabase
     .from("contacts")
     .select(
-      "id, hubspot_id, first_name, last_name, email, phone, company, job_title, lifecycle_stage, lead_status, website, city, country, sync_status, is_archived, hubspot_updated_at, local_updated_at, created_at"
+      "id, hubspot_id, first_name, last_name, email, phone, company, job_title, lifecycle_stage, lead_status, website, city, country, sync_status, is_archived, hubspot_updated_at, local_updated_at, created_at, properties"
     )
     .eq("id", id)
     .eq("org_id", orgId)
@@ -76,7 +76,7 @@ export default async function ContactDetailPage({ params }: Props) {
               {contact.job_title && contact.company && <span className="text-text-muted">@</span>}
               {contact.company && <span className="font-medium text-text-primary">{contact.company}</span>}
             </div>
-            {/* Metadata pills — moved from sidebar card */}
+            {/* Metadata pills — moved from sidebar card + enriched from properties JSONB */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               {contact.lifecycle_stage && (
                 <span className="rounded-full bg-brand-subtle px-2 py-0.5 text-xs font-medium text-brand-on-subtle">
@@ -86,6 +86,17 @@ export default async function ContactDetailPage({ params }: Props) {
               {contact.lead_status && (
                 <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
                   {contact.lead_status}
+                </span>
+              )}
+              {/* Industry and company size from properties JSONB */}
+              {(contact.properties as Record<string, string | null> | null)?.industry && (
+                <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
+                  {(contact.properties as Record<string, string | null>).industry}
+                </span>
+              )}
+              {(contact.properties as Record<string, string | null> | null)?.numemployees && (
+                <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
+                  {(contact.properties as Record<string, string | null>).numemployees} empl.
                 </span>
               )}
               {contact.country && (
@@ -123,8 +134,9 @@ export default async function ContactDetailPage({ params }: Props) {
         )}
       </header>
 
-      {/* Main grid — right column is shorter now (no metadata card) */}
+      {/* Main grid: left = form + insights + similar | right = activity */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
+        {/* Left: the main content column */}
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <h2 className="pb-4 text-lg font-semibold text-text-primary">
@@ -143,11 +155,16 @@ export default async function ContactDetailPage({ params }: Props) {
             />
           </section>
 
+          <AiInsightsPanel contactId={contact.id} />
+          <SimilarContactsPanel contactId={contact.id} />
+        </div>
+
+        {/* Right: activity timeline — shorter when empty, doesn't inflate left */}
+        <aside className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <header className="flex items-baseline justify-between pb-4">
-              <h2 className="text-lg font-semibold text-text-primary">Actividad</h2>
-              <span className="font-mono text-xs text-text-muted">
-                Último cambio:{" "}
+              <h2 className="text-base font-semibold text-text-primary">Actividad</h2>
+              <span className="font-mono text-[10px] text-text-muted">
                 {new Date(contact.local_updated_at).toLocaleString("es-AR", {
                   dateStyle: "short",
                   timeStyle: "short",
@@ -156,12 +173,6 @@ export default async function ContactDetailPage({ params }: Props) {
             </header>
             <ContactTimeline events={events ?? []} />
           </section>
-        </div>
-
-        {/* Right column — only insights + similar (metadata moved to hero) */}
-        <aside className="flex flex-col gap-6">
-          <AiInsightsPanel contactId={contact.id} />
-          <SimilarContactsPanel contactId={contact.id} />
         </aside>
       </div>
     </main>

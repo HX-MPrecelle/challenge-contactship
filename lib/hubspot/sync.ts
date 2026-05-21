@@ -80,19 +80,52 @@ export function calculateSyncHash(
 }
 
 /**
- * Build the embeddable text representation for a contact. Single sentence
- * with the fields that matter most for "who is this person?" — meant to be
- * fed to text-embedding-3-small.
+ * Build the embeddable text representation for a contact.
+ * Reads both promoted typed columns AND the raw `properties` JSONB so that
+ * rich HubSpot data (industry, notes, engagement signals) improves semantic
+ * search quality without requiring schema migrations for each new field.
  */
 export function buildContactText(contact: NormalizedContact): string {
+  const p = contact.properties ?? {};
+
+  // Format a date string into a human-readable label (e.g. "hace 45 días").
+  function daysAgo(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+    if (d < 0) return null;
+    if (d === 0) return "hoy";
+    if (d === 1) return "ayer";
+    return `hace ${d} días`;
+  }
+
+  const lastContacted = daysAgo(p.hs_last_contacted ?? p.notes_last_updated);
+  const lastReplied = daysAgo(p.hs_sales_email_last_replied);
+
   return [
     [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Contact",
     contact.jobTitle && `Cargo: ${contact.jobTitle}`,
     contact.company && `Empresa: ${contact.company}`,
+    // Industry — most impactful for AI clustering
+    p.industry && `Industria: ${p.industry}`,
+    // Company size
+    p.numemployees && `Tamaño empresa: ${p.numemployees} empleados`,
+    // Revenue
+    p.annualrevenue && Number(p.annualrevenue) > 0
+      && `Facturación anual: $${Number(p.annualrevenue).toLocaleString("es-AR")}`,
     contact.lifecycleStage && `Etapa: ${contact.lifecycleStage}`,
-    contact.leadStatus && `Estado: ${contact.leadStatus}`,
+    contact.leadStatus && `Estado del lead: ${contact.leadStatus}`,
+    p.hs_buying_role && `Rol de compra: ${p.hs_buying_role}`,
     contact.country && `País: ${contact.country}`,
     contact.email && `Email: ${contact.email}`,
+    // Engagement recency signals
+    lastContacted && `Último contacto: ${lastContacted}`,
+    lastReplied && `Última respuesta: ${lastReplied}`,
+    p.hs_email_open_count && Number(p.hs_email_open_count) > 0
+      && `Emails abiertos: ${p.hs_email_open_count}`,
+    // Lead source
+    p.hs_analytics_source && `Fuente: ${p.hs_analytics_source}`,
+    // Free-text notes — highest value for semantic search
+    p.message && p.message.trim() && `Notas: ${p.message.trim().slice(0, 400)}`,
   ]
     .filter(Boolean)
     .join(". ");

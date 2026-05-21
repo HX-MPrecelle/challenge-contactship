@@ -268,7 +268,7 @@ export function ContactsChat() {
               <Message key={message.id} role={message.role} parts={message.parts} />
             ))
           )}
-          {status === "streaming" && <ThinkingDots />}
+          {(status === "submitted" || status === "streaming") && <ThinkingDots />}
           {error && (
             <div className="rounded-lg border border-error/40 bg-error-subtle px-3 py-2 text-xs text-error">
               {error.message}
@@ -430,12 +430,15 @@ function ThinkingDots() {
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-subtle">
         <Sparkles size={13} className="text-brand-on-subtle" />
       </div>
-      <div className="flex items-center gap-1 pt-1.5">
+      <div className="flex items-center gap-1.5 pt-2">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 rounded-full bg-text-muted animate-pulse-dot"
-            style={{ animationDelay: `${i * 0.15}s` }}
+            className="h-2 w-2 rounded-full bg-text-muted"
+            style={{
+              animation: "bounce-dot 1.2s ease-in-out infinite",
+              animationDelay: `${i * 0.2}s`,
+            }}
           />
         ))}
       </div>

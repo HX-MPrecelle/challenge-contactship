@@ -3,19 +3,44 @@ import type { HubSpotClient } from "@/lib/hubspot/client";
 
 // Properties we always request from HubSpot. Anything outside this list lands
 // in `contacts.properties` JSONB without being promoted to a typed column.
+// Expanded to include business-context and engagement fields that significantly
+// improve embedding quality and AI insight accuracy.
 export const HUBSPOT_CONTACT_PROPERTIES = [
+  // ── Identity ──────────────────────────────────────────────────────────────
   "firstname",
   "lastname",
   "email",
   "phone",
   "company",
   "jobtitle",
-  "lifecyclestage",
-  "hs_lead_status",
-  "hubspot_owner_id",
   "website",
   "city",
   "country",
+
+  // ── Pipeline & status ─────────────────────────────────────────────────────
+  "lifecyclestage",
+  "hs_lead_status",
+  "hubspot_owner_id",
+  "hs_buying_role",          // DECISION_MAKER, BUDGET_HOLDER, etc.
+
+  // ── Company context (huge for AI clustering) ──────────────────────────────
+  "industry",                // FinTech, SaaS, Healthcare, etc.
+  "numemployees",            // 1-5, 25-50, 100-500, etc.
+  "annualrevenue",           // deal size signal
+
+  // ── Engagement & recency signals ──────────────────────────────────────────
+  "hs_last_contacted",       // ISO date — last outreach
+  "hs_sales_email_last_replied", // date — last reply received
+  "hs_email_open_count",     // int — email engagement
+  "notes_last_updated",      // date — last note activity
+
+  // ── Free-text notes (gold for semantic search) ────────────────────────────
+  "message",                 // contact-level notes / description
+
+  // ── Attribution ───────────────────────────────────────────────────────────
+  "hs_analytics_source",     // ORGANIC_SEARCH, PAID_SOCIAL, REFERRALS, etc.
+
+  // ── Timestamps ────────────────────────────────────────────────────────────
   "hs_lastmodifieddate",
   "createdate",
 ] as const;
@@ -33,19 +58,12 @@ export type HubSpotContactPage = {
   paging?: { next?: { after: string } };
 };
 
-/**
- * Fetch one page of contacts. `after` is the opaque cursor returned by a
- * previous response — pass undefined for the first page.
- */
 export async function listContactsPage(
   client: HubSpotClient,
   options: { after?: string; limit?: number; lifecycleStage?: string } = {}
 ): Promise<HubSpotContactPage> {
   const { after, limit = 100, lifecycleStage } = options;
 
-  // Filtering by lifecyclestage requires the search endpoint — list does
-  // not accept filters. We branch so the common "import everything" case
-  // hits the cheaper /list endpoint.
   if (lifecycleStage) {
     return searchContacts(client, { after, limit, lifecycleStage });
   }
@@ -96,11 +114,6 @@ async function searchContacts(
   return (await res.json()) as HubSpotContactPage;
 }
 
-/**
- * Total contact count for a portal, optionally filtered by lifecycle stage.
- * Used by the onboarding step that previews how many contacts will be
- * imported. Uses the search API which returns a `total` field.
- */
 export async function countContacts(
   client: HubSpotClient,
   filter?: { lifecycleStage?: string }
@@ -131,10 +144,6 @@ export async function countContacts(
   return json.total ?? 0;
 }
 
-/**
- * Update a single contact. Used by Server Actions that edit a contact from
- * our UI; the sync engine mirrors the new state back into Supabase.
- */
 export async function updateContact(
   client: HubSpotClient,
   hubspotId: string,
@@ -156,11 +165,6 @@ export async function updateContact(
   return (await res.json()) as HubSpotContact;
 }
 
-/**
- * Fetch a single contact by HubSpot ID with all the properties we care about.
- * Used by the webhook handler — events only carry a propertyName + value, so
- * we re-pull the full record before upserting locally.
- */
 export async function getContact(
   client: HubSpotClient,
   hubspotId: string

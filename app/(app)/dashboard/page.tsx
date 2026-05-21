@@ -97,26 +97,26 @@ export default async function DashboardPage() {
           tone={(conflicts ?? 0) > 0 ? "warning" : "default"}
           href={(conflicts ?? 0) > 0 ? "/conflicts" : undefined}
         />
-        {/* Sync health stat */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-bg-surface px-4 py-3">
+        {/* Sync health stat — same height as StatCard via h-full */}
+        <div className="flex h-full flex-col justify-between gap-3 rounded-xl border border-border-default bg-bg-surface px-4 py-4">
           <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-success/10 text-success">
               <Sparkles size={11} />
             </span>
             Sync health
           </div>
-          <div className="flex items-end gap-2">
+          <div className="flex flex-col gap-1.5">
             <span className="text-3xl font-semibold tabular-nums text-text-primary">
               {syncPct}%
             </span>
+            <div className="h-1 overflow-hidden rounded-full bg-bg-subtle">
+              <div
+                className={`h-full rounded-full transition-all ${syncPct >= 90 ? "bg-success" : syncPct >= 70 ? "bg-warning" : "bg-error"}`}
+                style={{ width: `${syncPct}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-text-muted">{synced ?? 0} de {total ?? 0} sincronizados</span>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-bg-subtle">
-            <div
-              className={`h-full rounded-full transition-all ${syncPct >= 90 ? "bg-success" : syncPct >= 70 ? "bg-warning" : "bg-error"}`}
-              style={{ width: `${syncPct}%` }}
-            />
-          </div>
-          <span className="text-[10px] text-text-muted">{synced ?? 0} de {total ?? 0} sincronizados</span>
         </div>
       </section>
 
@@ -203,7 +203,7 @@ function StatCard({
 
   const inner = (
     <div
-      className={`flex flex-col gap-2 rounded-xl border ${palette} px-4 py-3 transition-colors ${href ? "hover:border-border-strong" : ""}`}
+      className={`flex h-full flex-col justify-between gap-3 rounded-xl border ${palette} px-4 py-4 transition-colors ${href ? "hover:border-border-strong" : ""}`}
     >
       <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
         <span
@@ -213,12 +213,12 @@ function StatCard({
         </span>
         {label}
       </div>
-      <span className="font-heading text-3xl font-semibold text-text-primary">
+      <span className="text-3xl font-semibold tabular-nums text-text-primary">
         {value}
       </span>
     </div>
   );
-  return href ? <Link href={href}>{inner}</Link> : inner;
+  return href ? <Link href={href} className="block h-full">{inner}</Link> : inner;
 }
 
 function Breakdown({
