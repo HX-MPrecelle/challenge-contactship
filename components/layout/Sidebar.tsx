@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
   AlertTriangle,
-  Check,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -13,6 +12,7 @@ import {
   Settings2,
   Users,
 } from "lucide-react";
+import Image from "next/image";
 import { signOut } from "@/app/(app)/actions";
 import { createT, type Locale } from "@/lib/i18n/index";
 
@@ -47,9 +47,14 @@ export function Sidebar({ userEmail, locale }: Props) {
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-border-default bg-bg-surface p-3">
       <div className="flex items-center gap-2 px-2 py-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-text-primary">
-          <Check size={14} className="text-white" strokeWidth={2.5} />
-        </div>
+        <Image
+          src="/logo.png"
+          alt="ContactShip"
+          width={28}
+          height={28}
+          className="shrink-0 rounded-md"
+          priority
+        />
         <span className="text-sm font-semibold text-text-primary">
           ContactShip
         </span>

@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import Image from "next/image";
 import { LoginForm } from "./LoginForm";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -9,9 +9,14 @@ export default async function LoginPage() {
       {/* Brand panel — hidden on mobile */}
       <div className="hidden lg:flex lg:w-[440px] xl:w-[500px] shrink-0 flex-col justify-between bg-[#0F1115] p-10">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white">
-            <Check size={14} className="text-[#0F1115]" strokeWidth={2.5} />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ContactShip"
+            width={32}
+            height={32}
+            className="shrink-0"
+            priority
+          />
           <span className="text-sm font-semibold text-white">ContactShip</span>
         </div>
 
@@ -36,9 +41,14 @@ export default async function LoginPage() {
       <div className="flex flex-1 flex-col items-center justify-center bg-bg-base px-8 py-12">
         {/* Mobile-only logo */}
         <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-text-primary">
-            <Check size={14} className="text-white" strokeWidth={2.5} />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ContactShip"
+            width={28}
+            height={28}
+            className="shrink-0"
+            priority
+          />
           <span className="text-sm font-semibold text-text-primary">ContactShip</span>
         </div>
 

@@ -25,7 +25,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ContactShip",
-  description: "AI-first CRM workspace that mirrors HubSpot in real time.",
+  description: "ContactShip v1.0.0 — AI-first CRM workspace that mirrors HubSpot in real time.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default async function RootLayout({
