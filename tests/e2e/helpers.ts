@@ -1,9 +1,13 @@
 import { type Page, expect } from "@playwright/test";
 
-/** Navigate and wait for the main heading to appear. */
+/**
+ * Navigate and wait for the page load event.
+ * We use "load" instead of "networkidle" because Next.js pages with Supabase
+ * Realtime subscriptions or ongoing fetches never reach "networkidle".
+ */
 export async function goto(page: Page, path: string) {
   await page.goto(path);
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
 }
 
 /** Confirm we are on a given path prefix. */
@@ -17,7 +21,7 @@ export async function expectPath(page: Page, prefix: string) {
  */
 export async function sidebarNav(page: Page, label: string) {
   await page.getByRole("navigation").getByText(label).click();
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
 }
 
 /**

@@ -47,7 +47,7 @@ test.describe("Dashboard", () => {
     await expect(page).toHaveURL(/\/chat/);
 
     await page.goBack();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Contacts quick link
     const contactsLink = page.getByRole("link", { name: /ver todos los contactos/i });

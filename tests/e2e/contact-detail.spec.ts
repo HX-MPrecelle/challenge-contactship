@@ -7,7 +7,7 @@ async function openFirstContact(page: Page): Promise<string | null> {
   const link = page.getByRole("table").getByRole("link").first();
   if ((await link.count()) === 0) return null;
   await link.click();
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
   return page.url();
 }
 
@@ -133,7 +133,7 @@ test.describe("Contact detail — Email draft dialog", () => {
     test.skip((await link.count()) === 0, "No contacts");
 
     await link.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Open email dialog
     const emailBtn = page.getByRole("button", { name: /borrador de email/i });

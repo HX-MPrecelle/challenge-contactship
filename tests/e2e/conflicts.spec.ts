@@ -87,7 +87,7 @@ test.describe("Conflict diff dialog (from contact detail)", () => {
     test.skip((await firstConflictLink.count()) === 0, "No conflict contacts");
 
     await firstConflictLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Should show conflict banner
     const resolveBtn = page.getByRole("button", { name: /resolver con diff/i });

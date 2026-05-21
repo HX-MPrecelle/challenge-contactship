@@ -10,11 +10,11 @@ import { goto } from "./helpers";
 
 async function openFirstContact(page: Page): Promise<string | null> {
   await goto(page, "/contacts");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
   const link = page.getByRole("table").getByRole("link").first();
   if ((await link.count()) === 0) return null;
   await link.click();
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
   return page.url();
 }
 
@@ -171,7 +171,7 @@ test.describe("Conflict diff dialog", () => {
     test.skip((await firstLink.count()) === 0, "No conflict contacts");
 
     await firstLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     const resolveBtn = page.getByRole("button", { name: /resolver con diff/i });
     test.skip((await resolveBtn.count()) === 0, "Contact not in conflict state");
@@ -204,7 +204,7 @@ test.describe("Conflict diff dialog", () => {
     test.skip((await firstLink.count()) === 0, "No conflict contacts");
 
     await firstLink.click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     const resolveBtn = page.getByRole("button", { name: /resolver con diff/i });
     test.skip((await resolveBtn.count()) === 0, "Not a conflict contact");

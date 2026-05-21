@@ -64,16 +64,7 @@ test.describe("Login page", () => {
   });
 });
 
-test.describe("Logout", () => {
-  // This test uses the saved auth state
-  test.use({ storageState: "tests/e2e/.auth-state.json" });
-
-  test("logout via sidebar clears session", async ({ page }) => {
-    await page.goto("/dashboard");
-    await expect(page.getByRole("button", { name: /cerrar sesión/i })).toBeVisible();
-
-    await page.getByRole("button", { name: /cerrar sesión/i }).click();
-    await page.waitForURL(/\/login/, { timeout: 10_000 });
-    await expect(page).toHaveURL(/\/login/);
-  });
-});
+// NOTE: logout test lives in z-logout.spec.ts so it runs LAST.
+// signOut() uses scope:'global' in supabase-js v2, which revokes the server
+// session. Running it mid-suite would invalidate the shared auth state and
+// cause all subsequent tests to fail.

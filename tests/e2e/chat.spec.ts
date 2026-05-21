@@ -36,7 +36,7 @@ test.describe("Chat — layout", () => {
 
     // Reload the page
     await page.reload();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Persona should still be Coach (persisted in localStorage)
     await expect(page.getByRole("button", { name: "Coach" })).toHaveClass(/bg-brand/);
