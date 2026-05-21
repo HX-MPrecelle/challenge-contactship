@@ -133,36 +133,39 @@ export default async function DashboardPage() {
         </div>
       </section>
 
+      {/* Charts row 1: donuts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Breakdown
+        <DonutBreakdown
           title={t("dashboard.breakdown.stage")}
-          rows={stageCounts.slice(0, 6).map((r) => ({
+          rows={stageCounts.slice(0, 7).map((r) => ({
             label: STAGE_LABEL[r.key ?? ""] ?? r.key ?? (locale === "es" ? "Sin etapa" : "No stage"),
             count: r.count,
           }))}
           total={total ?? 0}
+          colorSet="stage"
         />
-        <Breakdown
-          title={t("dashboard.breakdown.countries")}
-          rows={countryCounts.slice(0, 6).map((r) => ({
-            label: r.key ?? (locale === "es" ? "Sin país" : "No country"),
-            count: r.count,
-          }))}
-          total={total ?? 0}
-        />
+        {leadStatusCounts.length > 0 && (
+          <DonutBreakdown
+            title={t("dashboard.breakdown.leadStatus")}
+            rows={leadStatusCounts.slice(0, 8).map((r) => ({
+              label: r.key ?? (locale === "es" ? "Sin estado" : "No status"),
+              count: r.count,
+            }))}
+            total={total ?? 0}
+            colorSet="status"
+          />
+        )}
       </div>
 
-      {/* Lead status breakdown */}
-      {leadStatusCounts.length > 0 && (
-        <Breakdown
-          title={t("dashboard.breakdown.leadStatus")}
-          rows={leadStatusCounts.slice(0, 8).map((r) => ({
-            label: r.key ?? (locale === "es" ? "Sin estado" : "No status"),
-            count: r.count,
-          }))}
-          total={total ?? 0}
-        />
-      )}
+      {/* Chart row 2: horizontal bars for countries */}
+      <BarBreakdown
+        title={t("dashboard.breakdown.countries")}
+        rows={countryCounts.slice(0, 8).map((r) => ({
+          label: r.key ?? (locale === "es" ? "Sin país" : "No country"),
+          count: r.count,
+        }))}
+        total={total ?? 0}
+      />
 
       <DashboardPriorities />
 
@@ -234,7 +237,98 @@ function StatCard({
   return href ? <Link href={href} className="block h-full">{inner}</Link> : inner;
 }
 
-function Breakdown({
+// ─── Color palettes for chart segments ────────────────────────────────────────
+const STAGE_COLORS = [
+  "#2348C9", // brand cobalt  — opportunity / top stage
+  "#0A7C5A", // success green — customer
+  "#1849A9", // info blue     — SQL
+  "#A8530B", // warning amber — MQL
+  "#5B5F66", // secondary     — lead
+  "#9098A0", // muted         — subscriber
+  "#C4C9D1", // subtle        — other
+];
+
+const STATUS_COLORS = [
+  "#0A7C5A", // success — OPEN_DEAL
+  "#2348C9", // brand   — IN_PROGRESS
+  "#1849A9", // info    — CONNECTED
+  "#4875D4", // info lt — OPEN
+  "#A8530B", // warning — ATTEMPTED_TO_CONTACT
+  "#D4730B", // amber   — NEW
+  "#B42318", // error   — BAD_TIMING
+  "#9098A0", // muted   — UNQUALIFIED
+];
+
+// ─── Donut chart (CSS conic-gradient) ─────────────────────────────────────────
+function DonutBreakdown({
+  title,
+  rows,
+  total,
+  colorSet = "stage",
+}: {
+  title: string;
+  rows: { label: string; count: number }[];
+  total: number;
+  colorSet?: "stage" | "status";
+}) {
+  if (rows.length === 0) return null;
+  const palette = colorSet === "status" ? STATUS_COLORS : STAGE_COLORS;
+  const withColors = rows.map((r, i) => ({
+    ...r,
+    color: palette[i % palette.length] ?? "#9098A0",
+    pct: total > 0 ? Math.round((r.count / total) * 100) : 0,
+  }));
+
+  // Build conic-gradient stops (start from top = -90deg)
+  let cumDeg = -90;
+  const stops = withColors.map(({ count, color }) => {
+    const deg = total > 0 ? (count / total) * 360 : 0;
+    const stop = `${color} ${cumDeg.toFixed(1)}deg ${(cumDeg + deg).toFixed(1)}deg`;
+    cumDeg += deg;
+    return stop;
+  });
+
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-5">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
+        {title}
+      </h2>
+      <div className="flex items-center gap-5">
+        {/* Donut */}
+        <div
+          className="h-[108px] w-[108px] shrink-0 rounded-full"
+          style={{
+            background: stops.length > 0 ? `conic-gradient(${stops.join(", ")})` : "#E6E6E4",
+            WebkitMaskImage: "radial-gradient(transparent 41%, black 42%)",
+            maskImage: "radial-gradient(transparent 41%, black 42%)",
+          }}
+        />
+        {/* Legend */}
+        <ul className="flex flex-1 flex-col gap-1.5 overflow-hidden">
+          {withColors.map((row) => (
+            <li key={row.label} className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: row.color }}
+                />
+                <span className="truncate text-xs text-text-secondary" title={row.label}>
+                  {row.label}
+                </span>
+              </div>
+              <span className="shrink-0 font-mono text-[11px] text-text-muted">
+                {row.count} · {row.pct}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+// ─── Enhanced horizontal bar chart (for geographic/ranked data) ───────────────
+function BarBreakdown({
   title,
   rows,
   total,
@@ -243,38 +337,44 @@ function Breakdown({
   rows: { label: string; count: number }[];
   total: number;
 }) {
-  if (rows.length === 0) {
-    return (
-      <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-5">
-        <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
-          {title}
-        </h2>
-        <p className="text-xs text-text-muted">Sin datos todavía.</p>
-      </section>
-    );
-  }
+  if (rows.length === 0) return null;
   const max = Math.max(...rows.map((r) => r.count));
+
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-5">
-      <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
+    <section className="flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-5">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
         {title}
       </h2>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {rows.map((row, i) => {
+          const widthPct = max > 0 ? Math.max(2, (row.count / max) * 100) : 2;
           const pct = total > 0 ? Math.round((row.count / total) * 100) : 0;
           return (
-            <li key={row.label} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-text-primary">{row.label}</span>
-                <span className="font-mono text-text-secondary">
+            <li key={row.label} className="flex items-center gap-3">
+              {/* Rank */}
+              <span className="w-4 shrink-0 text-right font-mono text-[10px] text-text-muted">
+                {i + 1}
+              </span>
+              {/* Label */}
+              <span className="w-28 shrink-0 truncate text-xs text-text-primary" title={row.label}>
+                {row.label}
+              </span>
+              {/* Bar */}
+              <div className="flex flex-1 items-center gap-2">
+                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-bg-subtle">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${widthPct}%`,
+                      background: i === 0
+                        ? "#2348C9"
+                        : `rgba(35,72,201,${Math.max(0.15, 0.7 - i * 0.1)})`,
+                    }}
+                  />
+                </div>
+                <span className="w-14 shrink-0 text-right font-mono text-[11px] text-text-muted">
                   {row.count} · {pct}%
                 </span>
-              </div>
-              <div className="h-1 overflow-hidden rounded-full bg-bg-subtle">
-                <div
-                  className={`h-full rounded-full transition-all ${i === 0 ? "bg-brand" : "bg-border-strong"}`}
-                  style={{ width: `${Math.max(2, (row.count / max) * 100)}%` }}
-                />
               </div>
             </li>
           );
