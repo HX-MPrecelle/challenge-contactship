@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
 export async function updateOrgName(
@@ -70,21 +71,23 @@ export async function triggerResync(): Promise<
 
   if (error) return { success: false, error: error.message };
 
-  // Immediately invoke the cron sync endpoint so contacts update in real time
-  // rather than waiting for the next scheduled tick (critical in local dev).
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret) {
-      void fetch(`${baseUrl}/api/cron/sync`, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${cronSecret}` },
-      });
+  // Use after() to call the cron after the response is sent — guaranteed
+  // to complete (unlike void fetch which may be killed before finishing).
+  after(async () => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      const cronSecret = process.env.CRON_SECRET;
+      if (cronSecret) {
+        await fetch(`${baseUrl}/api/cron/sync`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${cronSecret}` },
+        });
+        console.log("[triggerResync:after] cron sync completed");
+      }
+    } catch (err) {
+      console.warn("[triggerResync:after] cron call failed", err);
     }
-  } catch (err) {
-    // Non-fatal — the cron will run on its schedule as fallback.
-    console.warn("[triggerResync] immediate cron call failed", err);
-  }
+  });
 
   revalidatePath("/sync");
   revalidatePath("/contacts");

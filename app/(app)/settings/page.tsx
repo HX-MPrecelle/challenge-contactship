@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SyncHealthPanel } from "@/components/sync/SyncHealthPanel";
-import { SettingsNav } from "@/components/settings/SettingsNav";
 import { SettingsSection, SettingsRow } from "@/components/settings/SettingsSection";
 import { BackButton } from "@/components/layout/BackButton";
 import { createClient } from "@/lib/supabase/server";
@@ -67,10 +66,7 @@ export default async function SettingsPage({ searchParams }: Props) {
         </p>
       </div>
 
-      <div className="flex gap-8">
-        <SettingsNav activeSection={section} />
-
-        <div className="flex flex-1 flex-col gap-8 min-w-0">
+      <div className="flex flex-col gap-8">
           {/* ── General ── */}
           {section === "general" && (
             <>
@@ -89,7 +85,9 @@ export default async function SettingsPage({ searchParams }: Props) {
                   description="Dominio del workspace. No editable."
                 >
                   <span className="font-mono text-xs text-text-muted">
-                    {org?.email_domain ?? "—"}
+                    {org?.email_domain
+                      ? org.email_domain
+                      : `Genérico · ${user.email?.split("@")[1] ?? "—"}`}
                   </span>
                 </SettingsRow>
               </SettingsSection>
@@ -267,7 +265,6 @@ export default async function SettingsPage({ searchParams }: Props) {
               </SettingsRow>
             </SettingsSection>
           )}
-        </div>
       </div>
     </main>
   );

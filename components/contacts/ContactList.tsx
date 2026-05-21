@@ -301,7 +301,8 @@ export function ContactList({
             id="stage-filter"
             value={lifecycleFilter ?? ""}
             onChange={(e) => setLifecycleFilter(e.target.value || null)}
-            className="h-7 rounded-md border border-border-default bg-bg-surface px-2 text-xs text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
+            className="h-7 appearance-none rounded-md border border-border-default bg-bg-surface px-2 pr-6 text-xs text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
+            style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239098A0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center" }}
           >
             <option value="">Todas</option>
             {LIFECYCLE_FILTERS.map((f) => (
@@ -470,35 +471,36 @@ export function ContactList({
                       onClick={(e) => toggleRow(c.id, e)}
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="max-w-[180px] px-4 py-3">
                     <Link
                       href={`/contacts/${c.id}`}
-                      className="flex items-center gap-2.5 text-text-primary"
+                      className="flex min-w-0 items-center gap-2.5 text-text-primary"
                     >
                       <Avatar
                         size={26}
                         name={fullName === "—" ? "?" : fullName}
+                        className="shrink-0"
                       />
-                      <span className="font-medium">{fullName}</span>
+                      <span className="truncate font-medium" title={fullName}>{fullName}</span>
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
-                    <Link href={`/contacts/${c.id}`} className="block w-full font-mono text-xs text-text-muted">
+                  <td className="max-w-[160px] px-4 py-3">
+                    <Link href={`/contacts/${c.id}`} className="block truncate font-mono text-xs text-text-muted" title={c.email ?? ""}>
                       {c.email ?? "—"}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-text-secondary">
-                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                  <td className="max-w-[140px] px-4 py-3 text-text-secondary">
+                    <Link href={`/contacts/${c.id}`} className="block truncate" title={c.company ?? ""}>
                       {c.company ?? "—"}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-text-secondary">
-                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                  <td className="max-w-[140px] px-4 py-3 text-text-secondary">
+                    <Link href={`/contacts/${c.id}`} className="block truncate" title={c.job_title ?? ""}>
                       {c.job_title ?? "—"}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-text-secondary">
-                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                    <Link href={`/contacts/${c.id}`} className="block truncate">
                       {c.lifecycle_stage ?? "—"}
                     </Link>
                   </td>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
+import { HubSpotSyncButton } from "./HubSpotSyncButton";
 export const dynamic = "force-dynamic";
 
 type Props = {
@@ -50,18 +51,21 @@ export default async function ContactsPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <header className="flex items-center gap-3 pb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
-          <Users size={18} />
+      <header className="flex items-center justify-between pb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
+            <Users size={18} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-text-primary">
+              Contactos
+            </h1>
+            <p className="text-sm text-text-secondary">
+              Espejo en tiempo real de tu portal HubSpot.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">
-            Contactos
-          </h1>
-          <p className="text-sm text-text-secondary">
-            Espejo en tiempo real de tu portal HubSpot.
-          </p>
-        </div>
+        <HubSpotSyncButton />
       </header>
 
       <ContactList
