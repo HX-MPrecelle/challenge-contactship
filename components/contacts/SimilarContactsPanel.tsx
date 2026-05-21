@@ -6,8 +6,10 @@ import { Sparkles } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { SkeletonRows } from "@/components/ui/skeleton";
 import { findSimilarContacts, type SimilarContact } from "@/actions/ai";
+import { useI18n } from "@/lib/i18n/context";
 
 export function SimilarContactsPanel({ contactId }: { contactId: string }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<SimilarContact[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +34,7 @@ export function SimilarContactsPanel({ contactId }: { contactId: string }) {
           <Sparkles size={14} className="text-brand-on-subtle" />
         </div>
         <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-          Contactos similares
+          {t("similar.title")}
         </h2>
       </header>
 
@@ -43,9 +45,7 @@ export function SimilarContactsPanel({ contactId }: { contactId: string }) {
           {error}
         </div>
       ) : !contacts || contacts.length === 0 ? (
-        <p className="text-xs text-text-muted">
-          No encontramos contactos parecidos en tu base.
-        </p>
+        <p className="text-xs text-text-muted">{t("similar.empty")}</p>
       ) : (
         <ul className="flex flex-col gap-1">
           {contacts.map((c) => {
@@ -65,7 +65,7 @@ export function SimilarContactsPanel({ contactId }: { contactId: string }) {
                     <span className="truncate text-xs text-text-secondary">
                       {[c.jobTitle, c.company, c.country]
                         .filter(Boolean)
-                        .join(" · ") || "Sin metadatos"}
+                        .join(" · ") || t("similar.noMeta")}
                     </span>
                   </div>
                   <SimilarityBadge similarity={c.similarity} />

@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getConflictDiff, type ConflictDiff } from "@/actions/contacts";
 import { resolveConflictField, skipConflict } from "@/actions/conflicts";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   contact: {
@@ -22,9 +23,10 @@ type Props = {
 };
 
 export function ConflictDetail({ contact, onResolved }: Props) {
+  const { t } = useI18n();
   const fullName =
     [contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
-    "Sin nombre";
+    t("misc.noName");
 
   const [diff, setDiff] = useState<ConflictDiff | null>(null);
   const [choices, setChoices] = useState<Record<string, "local" | "hubspot">>({});
@@ -69,7 +71,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
     startSaving(async () => {
       const result = await resolveConflictField({ contactId: contact.id, choices: payload });
       if (!result.success) { toast.error(result.error); return; }
-      toast.success("Conflicto resuelto");
+      toast.success(t("conflicts.toast.resolved"));
       onResolved();
     });
   }
@@ -78,7 +80,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
     startSkipping(async () => {
       const result = await skipConflict(contact.id);
       if (!result.success) { toast.error(result.error); return; }
-      toast.info("Conflicto pospuesto");
+      toast.info(t("conflicts.toast.skipped"));
       onResolved();
     });
   }
@@ -99,7 +101,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-error-subtle px-2.5 py-1 text-xs font-medium text-error">
           <span className="h-1.5 w-1.5 rounded-full bg-error animate-pulse-dot" />
-          Conflicto
+          {t("status.conflict")}
         </span>
       </div>
 
@@ -133,7 +135,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
                   className="rounded-md border border-border-default bg-bg-surface px-2 py-1 text-[10px] font-medium text-text-primary transition-colors hover:border-border-strong"
                 >
                   <CheckCheck size={10} className="mr-1 inline" />
-                  Todo local
+                  {t("conflicts.detail.allLocal")}
                 </button>
                 <button
                   type="button"
@@ -141,7 +143,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
                   className="rounded-md border border-border-default bg-bg-surface px-2 py-1 text-[10px] font-medium text-text-primary transition-colors hover:border-border-strong"
                 >
                   <CheckCheck size={10} className="mr-1 inline" />
-                  Todo HubSpot
+                  {t("conflicts.detail.allHubspot")}
                 </button>
               </div>
             </div>
@@ -149,18 +151,18 @@ export function ConflictDetail({ contact, onResolved }: Props) {
             {/* Column headers */}
             <div className="grid grid-cols-[90px_1fr_1fr] gap-2 px-1">
               <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                Campo
+                {t("conflicts.detail.campo")}
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-info" />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                  Local (vos)
+                  {t("conflicts.detail.local")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-warning" />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
-                  HubSpot
+                  {t("conflicts.detail.hubspot")}
                 </span>
               </div>
             </div>
@@ -178,12 +180,14 @@ export function ConflictDetail({ contact, onResolved }: Props) {
                       active={choice === "local"}
                       same={!f.differs}
                       onClick={() => setChoices((p) => ({ ...p, [f.field]: "local" }))}
+                      emptyLabel={t("diffDialog.empty")}
                     />
                     <DiffCell
                       value={f.hubspot}
                       active={choice === "hubspot"}
                       same={!f.differs}
                       onClick={() => setChoices((p) => ({ ...p, [f.field]: "hubspot" }))}
+                      emptyLabel={t("diffDialog.empty")}
                     />
                   </li>
                 );
@@ -197,7 +201,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
       <div className="flex items-center justify-between gap-3 border-t border-border-default px-6 py-4">
         <Button variant="ghost" size="sm" onClick={handleSkip} disabled={isSkipping || isSaving}>
           {isSkipping ? <Loader2 size={12} className="animate-spin" /> : null}
-          Posponer
+          {t("conflicts.detail.skip")}
         </Button>
         <div className="flex gap-2">
           <Button
@@ -208,7 +212,7 @@ export function ConflictDetail({ contact, onResolved }: Props) {
             {isSaving ? (
               <Loader2 size={12} className="animate-spin" />
             ) : null}
-            Aplicar selección
+            {t("conflicts.detail.apply")}
           </Button>
         </div>
       </div>
@@ -221,11 +225,13 @@ function DiffCell({
   active,
   same,
   onClick,
+  emptyLabel,
 }: {
   value: string | null;
   active: boolean;
   same: boolean;
   onClick: () => void;
+  emptyLabel: string;
 }) {
   return (
     <button
@@ -242,7 +248,7 @@ function DiffCell({
       ].join(" ")}
     >
       <span className={same ? "italic" : value ? "" : "italic text-text-muted"}>
-        {value || "(vacío)"}
+        {value || emptyLabel}
       </span>
     </button>
   );

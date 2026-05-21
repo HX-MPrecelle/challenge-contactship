@@ -6,9 +6,11 @@ import {
   Clock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getServerT } from "@/lib/i18n/server";
 
 export async function SyncHealthPanel({ orgId }: { orgId: string }) {
   const supabase = await createClient();
+  const { t } = await getServerT();
 
   const [syncedRes, pendingRes, conflictRes, errorRes, connRes, lastEventRes] =
     await Promise.all([
@@ -60,10 +62,10 @@ export async function SyncHealthPanel({ orgId }: { orgId: string }) {
     <section className="flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-6">
       <header>
         <h2 className="font-heading text-lg font-semibold text-text-primary">
-          Estado del sync
+          {t("syncPanel.title")}
         </h2>
         <p className="text-sm text-text-secondary">
-          Salud actual del espejo local frente a HubSpot.
+          {t("syncPanel.desc")}
         </p>
       </header>
 
@@ -72,32 +74,32 @@ export async function SyncHealthPanel({ orgId }: { orgId: string }) {
           icon={<CheckCircle2 size={14} />}
           tone="success"
           count={synced}
-          label="Sincronizados"
+          label={t("sync.stat.synced")}
         />
         <StatTile
           icon={<Clock size={14} />}
           tone="warning"
           count={pending}
-          label="Pendientes"
+          label={t("sync.stat.pending")}
           href={pending > 0 ? "/contacts?status=pending" : undefined}
         />
         <StatTile
           icon={<AlertTriangle size={14} />}
           tone="error"
           count={conflicts}
-          label="Conflictos"
+          label={t("sync.stat.conflicts")}
           href={conflicts > 0 ? "/contacts?status=conflict" : undefined}
         />
         <StatTile
           icon={<AlertCircle size={14} />}
           tone="error"
           count={errors}
-          label="Errores"
+          label={t("sync.stat.errors")}
         />
       </div>
 
       <div className="flex items-center justify-between rounded-lg border border-border-default bg-bg-elevated px-4 py-2.5 text-xs">
-        <span className="text-text-secondary">Última actividad de sync</span>
+        <span className="text-text-secondary">{t("syncPanel.lastActivity")}</span>
         <span className="font-mono text-text-primary">
           {lastEvent
             ? new Date(lastEvent).toLocaleString("es-AR", {
@@ -110,8 +112,7 @@ export async function SyncHealthPanel({ orgId }: { orgId: string }) {
 
       {connRes.data?.needs_reconnect && (
         <div className="rounded-lg border border-error/40 bg-error-subtle px-4 py-2.5 text-xs text-error">
-          La conexión con HubSpot dejó de funcionar. Reconectá la cuenta para
-          que vuelva a sincronizar.
+          {t("syncPanel.error")}
         </div>
       )}
     </section>

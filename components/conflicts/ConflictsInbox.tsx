@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConflictListItem } from "./ConflictListItem";
 import { ConflictDetail } from "./ConflictDetail";
+import { useI18n } from "@/lib/i18n/context";
 
 type ConflictContact = {
   id: string;
@@ -22,6 +23,7 @@ export function ConflictsInbox({
   initialContacts: ConflictContact[];
   orgId: string;
 }) {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<ConflictContact[]>(initialContacts);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialContacts[0]?.id ?? null
@@ -78,11 +80,10 @@ export function ConflictsInbox({
 
         <div className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold text-text-primary">
-            Todo en sync 🎉
+            {t("conflicts.empty.title")}
           </h2>
           <p className="max-w-sm text-sm text-text-secondary">
-            No hay conflictos pendientes. Tu base de contactos está perfectamente
-            sincronizada con HubSpot — todos los cambios están alineados.
+            {t("conflicts.empty.desc")}
           </p>
         </div>
 
@@ -91,13 +92,13 @@ export function ConflictsInbox({
             href="/contacts"
             className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
           >
-            Ver contactos
+            {t("conflicts.empty.viewContacts")}
           </a>
           <a
             href="/activity"
             className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
           >
-            Ver actividad
+            {t("conflicts.empty.viewActivity")}
           </a>
         </div>
       </div>
@@ -111,7 +112,7 @@ export function ConflictsInbox({
         <div className="border-b border-border-default px-4 py-3">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-text-primary">
-              Conflictos pendientes
+              {t("conflicts.pending")}
             </h2>
             <span className="inline-flex items-center gap-1 rounded-full bg-error-subtle px-2 py-0.5 text-xs font-medium text-error">
               <span className="h-1.5 w-1.5 rounded-full bg-error animate-pulse-dot" />
@@ -119,7 +120,7 @@ export function ConflictsInbox({
             </span>
           </div>
           <p className="mt-0.5 text-xs text-text-muted">
-            Resolución campo por campo o aplicación masiva.
+            {t("conflicts.subtitle")}
           </p>
         </div>
         <div className="flex flex-col">

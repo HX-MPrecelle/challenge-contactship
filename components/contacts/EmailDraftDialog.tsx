@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateEmailDraftAction } from "@/actions/ai";
+import { useI18n } from "@/lib/i18n/context";
 
 type Draft = {
   subject: string;
@@ -26,15 +27,15 @@ type Draft = {
 
 type Tone = "warm" | "concise" | "direct";
 
-const TONES: { value: Tone; label: string; hint: string }[] = [
-  { value: "warm", label: "Cálido", hint: "Humano, interés genuino" },
-  { value: "concise", label: "Conciso", hint: "Profesional, al grano" },
-  { value: "direct", label: "Directo", hint: "Consultivo, pregunta concreta" },
-];
-
 export function EmailDraftDialog({ contactId }: { contactId: string }) {
+  const { t } = useI18n();
+  const TONES: { value: Tone; label: string; hint: string }[] = [
+    { value: "warm", label: t("email.tone.warm"), hint: t("email.tone.warm.hint") },
+    { value: "concise", label: t("email.tone.concise"), hint: t("email.tone.concise.hint") },
+    { value: "direct", label: t("email.tone.direct"), hint: t("email.tone.direct.hint") },
+  ];
   const [open, setOpen] = useState(false);
-  const [goal, setGoal] = useState("Reactivar la conversación y agendar una llamada de 15 minutos.");
+  const [goal, setGoal] = useState(t("email.default.goal"));
   const [tone, setTone] = useState<Tone>("warm");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [subject, setSubject] = useState("");
@@ -79,18 +80,18 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
   }
 
   async function copyToClipboard() {
-    const text = `Asunto: ${subject}\n\n${body}`;
+    const text = `${t("email.subject.label")}: ${subject}\n\n${body}`;
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Email copiado al portapapeles");
+      toast.success(t("email.copied"));
     } catch {
-      toast.error("No pudimos copiar — copialo manualmente");
+      toast.error(t("email.error.copyFailed"));
     }
   }
 
   function openGmail() {
     if (!draft?.to) {
-      toast.error("Este contacto no tiene email registrado");
+      toast.error(t("email.noEmail"));
       return;
     }
     const url =
@@ -103,7 +104,7 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
 
   function openMailto() {
     if (!draft?.to) {
-      toast.error("Este contacto no tiene email registrado");
+      toast.error(t("email.noEmail"));
       return;
     }
     const url = `mailto:${encodeURIComponent(draft.to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -115,7 +116,7 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
       <DialogTrigger asChild>
         <Button variant="secondary" size="sm" className="w-full justify-center">
           <Mail size={12} />
-          <span>Borrador de email</span>
+          <span>{t("contact.email.button")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
@@ -124,23 +125,23 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-subtle">
               <Sparkles size={15} className="text-brand-on-subtle" />
             </div>
-            Borrador de email con IA
+            {t("email.title")}
           </DialogTitle>
           <DialogDescription>
-            Configurá objetivo + tono y generamos un borrador personalizado.
+            {t("email.desc")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="goal" className="text-xs font-medium text-text-secondary">
-              Objetivo del email
+              {t("email.goal.label")}
             </Label>
             <Input
               id="goal"
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
-              placeholder="Ej: Agendar llamada para discutir nuestra propuesta"
+              placeholder={t("email.goal.placeholder")}
               maxLength={400}
               disabled={isPending}
               className="h-9"
@@ -149,7 +150,7 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
 
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-text-secondary">
-              Tono
+              {t("email.tone.label")}
             </Label>
             <div className="grid grid-cols-3 gap-2">
               {TONES.map((opt) => {
@@ -189,12 +190,12 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
               {isPending ? (
                 <>
                   <Loader2 size={12} className="animate-spin" />
-                  <span>Generando...</span>
+                  <span>{t("email.generating")}</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={12} />
-                  <span>Generar borrador</span>
+                  <span>{t("email.generate")}</span>
                 </>
               )}
             </Button>
@@ -205,25 +206,24 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
               {/* Compact summary of tone+goal when draft is shown */}
               <div className="flex items-center justify-between rounded-md bg-bg-subtle px-3 py-2 text-xs text-text-secondary">
                 <span>
-                  Tono: <span className="font-medium text-text-primary capitalize">{tone}</span>
-                  {" · "}Objetivo: <span className="font-medium text-text-primary">{goal.slice(0, 50)}{goal.length > 50 ? "…" : ""}</span>
+                  {t("email.summary", { tone: TONES.find((to) => to.value === tone)?.label ?? tone, goal: goal.slice(0, 50) + (goal.length > 50 ? "…" : "") })}
                 </span>
                 <button
                   type="button"
                   onClick={reset}
                   className="text-text-muted hover:text-text-primary"
                 >
-                  Cambiar
+                  {t("email.change")}
                 </button>
               </div>
               <div className="rounded-lg border border-brand/40 bg-brand-subtle px-3 py-2.5 text-xs">
-                <span className="font-medium text-brand-on-subtle">Por qué este enfoque: </span>
+                <span className="font-medium text-brand-on-subtle">{t("email.rationale")} </span>
                 <span className="text-text-secondary">{draft.rationale}</span>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="subject" className="text-xs font-medium text-text-secondary">
-                  Asunto
+                  {t("email.subject.label")}
                 </Label>
                 <Input
                   id="subject"
@@ -236,7 +236,7 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="body" className="text-xs font-medium text-text-secondary">
-                  Cuerpo
+                  {t("email.body.label")}
                 </Label>
                 <textarea
                   id="body"
@@ -271,19 +271,19 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
                 ) : (
                   <RefreshCw size={12} />
                 )}
-                <span>Regenerar</span>
+                <span>{t("email.regenerate")}</span>
               </Button>
               <Button type="button" variant="secondary" onClick={copyToClipboard}>
                 <Copy size={12} />
-                <span>Copiar</span>
+                <span>{t("email.copy")}</span>
               </Button>
               <Button type="button" variant="secondary" onClick={openGmail} disabled={!draft.to}>
                 <ExternalLink size={12} />
-                <span>Gmail</span>
+                <span>{t("email.gmail")}</span>
               </Button>
               <Button type="button" onClick={openMailto} disabled={!draft.to}>
                 <Send size={12} />
-                <span>Mail del sistema</span>
+                <span>{t("email.mailto")}</span>
               </Button>
             </>
           )}

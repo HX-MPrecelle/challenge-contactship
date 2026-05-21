@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConflictsInbox } from "@/components/conflicts/ConflictsInbox";
 import { BackButton } from "@/components/layout/BackButton";
+import { getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConflictsPage() {
   const supabase = await createClient();
+  const { t } = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -29,9 +31,9 @@ export default async function ConflictsPage() {
     <main className="mx-auto max-w-6xl px-6 py-8">
       <BackButton />
       <header className="pb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Conflictos</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">{t("conflicts.title")}</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Contactos con datos divergentes entre ContactShip y HubSpot.
+          {t("conflicts.subtitle")}
         </p>
       </header>
       <ConflictsInbox

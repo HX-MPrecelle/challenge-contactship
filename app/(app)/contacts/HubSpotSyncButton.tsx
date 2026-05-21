@@ -5,8 +5,10 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { triggerResync } from "@/actions/settings";
+import { useI18n } from "@/lib/i18n/context";
 
 export function HubSpotSyncButton() {
+  const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
 
   function handleSync() {
@@ -26,14 +28,14 @@ export function HubSpotSyncButton() {
       size="sm"
       onClick={handleSync}
       disabled={isPending}
-      title="Importar todos los contactos desde HubSpot"
+      title={t("settings.resync.tooltip")}
     >
       {isPending ? (
         <Loader2 size={13} className="animate-spin" />
       ) : (
         <RefreshCw size={13} />
       )}
-      Sincronizar desde HubSpot
+      {t("contacts.sync")}
     </Button>
   );
 }

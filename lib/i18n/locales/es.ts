@@ -263,6 +263,160 @@ export const es = {
   "onboarding.step.connect": "Conectar HubSpot",
   "onboarding.step.select": "Seleccionar contactos",
   "onboarding.step.sync": "Sincronización",
+
+  // ── Login ───────────────────────────────────────────────────────────────────
+  "login.brand.tagline": "A CRM workspace that mirrors HubSpot in real time.",
+  "login.brand.desc": "AI-powered insights, conflict resolution, and instant sync — built for sales teams that live in HubSpot.",
+  "login.brand.year": "ContactShip v2",
+  "login.heading": "Bienvenido",
+  "login.subheading": "Ingresá con tu cuenta de trabajo.",
+  "login.email.label": "Email",
+  "login.email.placeholder": "vos@empresa.com",
+  "login.password.label": "Contraseña",
+  "login.password.placeholder.signin": "Tu contraseña",
+  "login.password.placeholder.signup": "Al menos 8 caracteres",
+  "login.confirmPassword.label": "Confirmar contraseña",
+  "login.confirmPassword.placeholder": "Repetí la contraseña",
+  "login.showPassword": "Mostrar contraseña",
+  "login.hidePassword": "Ocultar contraseña",
+  "login.submit.signin": "Iniciar sesión",
+  "login.submit.signin.pending": "Iniciando sesión...",
+  "login.submit.signup": "Crear cuenta",
+  "login.submit.signup.pending": "Creando cuenta...",
+  "login.helper.signin": "Usá el email y contraseña con los que te registraste.",
+  "login.helper.signup": "La contraseña debe tener al menos 8 caracteres.",
+  "login.toggle.toSignup.question": "¿No tenés cuenta?",
+  "login.toggle.toSignup.action": "Crear una",
+  "login.toggle.toSignin.question": "¿Ya tenés cuenta?",
+  "login.toggle.toSignin.action": "Iniciar sesión",
+  "login.error.passwordMismatch": "Las contraseñas no coinciden",
+  "login.error.credentials": "Email o contraseña incorrectos",
+
+  // ── Onboarding ──────────────────────────────────────────────────────────────
+  "onboarding.welcome.title": "Bienvenido a ContactShip",
+  "onboarding.welcome.desc": "Antes de empezar, confirmá el nombre de tu organización.",
+  "onboarding.orgName.label": "Nombre de la organización",
+  "onboarding.orgName.hint": "Lo podés cambiar después desde Settings.",
+  "onboarding.orgName.error": "Ingresá un nombre para la organización",
+  "onboarding.continue": "Continuar",
+  "onboarding.back": "Volver",
+  "onboarding.connect.title.notConnected": "Conectá tu cuenta de HubSpot",
+  "onboarding.connect.title.connected": "HubSpot conectado",
+  "onboarding.connect.desc.notConnected": "Vas a ser redirigido a HubSpot para autorizar el acceso.",
+  "onboarding.connect.desc.connected": "Portal: {name}. Listos para importar tus contactos.",
+  "onboarding.connect.button": "Conectar HubSpot",
+  "onboarding.select.title": "¿Qué contactos querés importar?",
+  "onboarding.select.desc": "Podés importar todo o filtrar por etapa del ciclo de vida.",
+  "onboarding.select.all.label": "Todos los contactos",
+  "onboarding.select.all.desc": "Importa toda la base sin filtros.",
+  "onboarding.select.stage.label": "Solo una etapa del ciclo",
+  "onboarding.select.stage.desc": "Por ejemplo: lead, opportunity, customer.",
+  "onboarding.select.stage.placeholder": "lead",
+  "onboarding.select.stage.hint": "Valores comunes: subscriber, lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer.",
+  "onboarding.select.preview.loading": "Consultando HubSpot...",
+  "onboarding.select.preview.waiting": "Esperando preview...",
+  "onboarding.select.preview.count": "Vas a importar {count} contacto{plural}.",
+  "onboarding.select.import": "Importar",
+  "onboarding.sync.title.syncing": "Sincronizando tus contactos",
+  "onboarding.sync.title.done": "Sincronización completa",
+  "onboarding.sync.title.error": "Hubo un error",
+  "onboarding.sync.desc.syncing": "Esto puede tardar unos segundos. No cierres la ventana.",
+  "onboarding.sync.desc.done": "Te llevamos al workspace en un segundo...",
+  "onboarding.sync.desc.error": "Intentá refrescar la página.",
+  "onboarding.sync.retry": "Reintentar",
+
+  // ── ContactList extra ───────────────────────────────────────────────────────
+  "contacts.filter.status.synced": "Synced",
+  "contacts.filter.status.pending": "Pendiente",
+  "contacts.filter.status.conflict": "Conflicto",
+  "contacts.filter.status.error": "Error",
+  "contacts.filter.active.status": "Mostrando solo contactos {status}.",
+  "contacts.bulk.resynced": "{n} contacto{plural} marcado{plural} para re-sync",
+  "contacts.bulk.archived": "{n} contacto{plural} archivado{plural}",
+  "contacts.ai.error.empty": "Escribí una consulta primero",
+  "contacts.ai.error.noFilters": "No pude traducir esa consulta. Probá con algo más específico.",
+  "contacts.noName": "—",
+
+  // ── ContactTimeline ─────────────────────────────────────────────────────────
+  "timeline.event.create": "Contacto creado",
+  "timeline.event.update": "Actualizado",
+  "timeline.event.delete": "Archivado",
+  "timeline.event.conflict": "Conflicto",
+  "timeline.event.skip": "Evento descartado",
+  "timeline.direction.from": "desde HubSpot",
+  "timeline.direction.to": "hacia HubSpot",
+  "timeline.empty": "Sin eventos de sincronización todavía.",
+
+  // ── ConflictBanner ──────────────────────────────────────────────────────────
+  "conflict.banner.title": "Conflicto detectado",
+  "conflict.banner.desc": "Este contacto fue editado en HubSpot mientras vos lo modificabas localmente. Resolvelo campo por campo o aplicá una versión completa.",
+  "conflict.banner.diff": "Resolver con diff",
+  "conflict.banner.keepLocal": "Mantener mis cambios",
+  "conflict.banner.useHubspot": "Usar versión de HubSpot",
+  "conflict.toast.keptLocal": "Tus cambios fueron escritos en HubSpot",
+  "conflict.toast.usedHubspot": "El contacto ahora refleja la versión de HubSpot",
+
+  // ── SimilarContacts ─────────────────────────────────────────────────────────
+  "similar.title": "Contactos similares",
+  "similar.empty": "No encontramos contactos parecidos en tu base.",
+  "similar.noMeta": "Sin metadatos",
+  "similar.footer": "vector similarity · pgvector",
+
+  // ── EmailDraftDialog extra ──────────────────────────────────────────────────
+  "email.default.goal": "Reactivar la conversación y agendar una llamada de 15 minutos.",
+  "email.summary": "Tono: {tone} · Objetivo: {goal}",
+  "email.change": "Cambiar",
+  "email.recipient": "Destinatario: {email}",
+  "email.error.noEmail2": "Este contacto no tiene email registrado",
+  "email.error.copyFailed": "No pudimos copiar — copialo manualmente",
+
+  // ── ConflictDiffDialog ──────────────────────────────────────────────────────
+  "diffDialog.detected": "Conflicto detectado: {date}",
+  "diffDialog.noFields": "Curiosamente, ningún campo difiere — quizás el conflicto ya fue resuelto por otro flujo. Podés guardar y forzar la sincronización.",
+  "diffDialog.empty": "(vacío)",
+
+  // ── FilterSummaryDialog ─────────────────────────────────────────────────────
+  "filterSummary.title": "Análisis del filtro",
+  "filterSummary.analyzing": "Analizando contactos...",
+  "filterSummary.stats": "Analizados: {analyzed} de {total}",
+  "filterSummary.partial": "Muestra parcial",
+  "filterSummary.full": "Muestra completa",
+
+  // ── SyncHealthPanel ─────────────────────────────────────────────────────────
+  "syncPanel.title": "Estado del sync",
+  "syncPanel.desc": "Salud actual del espejo local frente a HubSpot.",
+  "syncPanel.lastActivity": "Última actividad de sync",
+  "syncPanel.error": "La conexión con HubSpot dejó de funcionar. Reconectá la cuenta para que vuelva a sincronizar.",
+
+  // ── Chat extra ──────────────────────────────────────────────────────────────
+  "chat.voice.listening": "Escuchando…",
+  "chat.voice.stop": "Detener micrófono",
+  "chat.voice.start": "Hablar",
+  "chat.example.1": "¿Cuáles son los patrones comunes entre mis leads cerrados?",
+  "chat.example.2": "¿Qué contactos debería priorizar esta semana y por qué?",
+  "chat.example.3": "Resumime el estado general de mi pipeline.",
+  "chat.example.4": "¿Hay industrias sin atender con perfil similar a mis mejores clientes?",
+  "chat.back": "Dashboard",
+  "chat.citations.basedOn": "Basado en {n} contacto{plural}",
+
+  // ── Settings extra ──────────────────────────────────────────────────────────
+  "settings.orgName.updated": "Nombre actualizado",
+  "settings.orgName.editAria": "Editar nombre",
+  "settings.hubspot.disconnectConfirm": "¿Seguro que querés desconectar HubSpot? Los contactos sincronizados se mantienen pero no habrá nuevos updates.",
+  "settings.resync.tooltip": "Importar todos los contactos desde HubSpot",
+  "settings.reembed.tooltip": "Re-generar embeddings con datos enriquecidos",
+
+  // ── Errors / 404 ────────────────────────────────────────────────────────────
+  "error.title": "Algo salió mal",
+  "error.desc": "Ocurrió un error inesperado. Podés intentar de nuevo o volver al inicio.",
+  "error.retry": "Intentar de nuevo",
+
+  // ── Misc ────────────────────────────────────────────────────────────────────
+  "misc.noName": "Sin nombre",
+  "misc.employees": "empl.",
+  "misc.cache": "Cache",
+  "misc.justGenerated": "Recién generado",
+  "misc.syncQueued": "{n} contacto{plural} en cola de sync. El status se actualizará en tiempo real.",
 };
 
 export type TranslationKey = keyof typeof es;

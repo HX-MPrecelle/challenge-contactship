@@ -1,7 +1,9 @@
 import { Check } from "lucide-react";
 import { LoginForm } from "./LoginForm";
+import { getServerT } from "@/lib/i18n/server";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const { t } = await getServerT();
   return (
     <div className="flex min-h-screen">
       {/* Brand panel — hidden on mobile */}
@@ -18,16 +20,15 @@ export default function LoginPage() {
             CRM workspace
           </p>
           <h1 className="text-[2rem] font-semibold leading-[1.15] tracking-tight text-white">
-            A CRM workspace that mirrors HubSpot in real time.
+            {t("login.brand.tagline")}
           </h1>
           <p className="text-sm leading-relaxed text-white/55">
-            AI-powered insights, conflict resolution, and instant sync —
-            built for sales teams that live in HubSpot.
+            {t("login.brand.desc")}
           </p>
         </div>
 
         <p className="font-mono text-[11px] text-white/25">
-          ContactShip v2 · {new Date().getFullYear()}
+          {t("login.brand.year")} · {new Date().getFullYear()}
         </p>
       </div>
 
@@ -43,9 +44,9 @@ export default function LoginPage() {
 
         <div className="w-full max-w-sm">
           <div className="pb-7">
-            <h2 className="text-xl font-semibold text-text-primary">Bienvenido</h2>
+            <h2 className="text-xl font-semibold text-text-primary">{t("login.heading")}</h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Ingresá con tu cuenta de trabajo.
+              {t("login.subheading")}
             </p>
           </div>
           <LoginForm />

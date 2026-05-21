@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateContact } from "@/actions/contacts";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   contactId: string;
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function ContactForm({ contactId, initial }: Props) {
+  const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -46,51 +48,19 @@ export function ContactForm({ contactId, initial }: Props) {
         toast.error(result.error);
         return;
       }
-      toast.success("Contacto actualizado y sincronizado con HubSpot");
+      toast.success(t("contact.form.saved"));
     });
   }
 
   return (
     <form action={handleSubmit} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
-        <Field
-          name="firstName"
-          label="Nombre"
-          defaultValue={initial.firstName ?? ""}
-          disabled={isPending}
-        />
-        <Field
-          name="lastName"
-          label="Apellido"
-          defaultValue={initial.lastName ?? ""}
-          disabled={isPending}
-        />
-        <Field
-          name="email"
-          label="Email"
-          type="email"
-          defaultValue={initial.email ?? ""}
-          disabled={isPending}
-        />
-        <Field
-          name="phone"
-          label="Teléfono"
-          type="tel"
-          defaultValue={initial.phone ?? ""}
-          disabled={isPending}
-        />
-        <Field
-          name="company"
-          label="Empresa"
-          defaultValue={initial.company ?? ""}
-          disabled={isPending}
-        />
-        <Field
-          name="jobTitle"
-          label="Cargo"
-          defaultValue={initial.jobTitle ?? ""}
-          disabled={isPending}
-        />
+        <Field name="firstName" label={t("contact.form.firstName")} defaultValue={initial.firstName ?? ""} disabled={isPending} />
+        <Field name="lastName" label={t("contact.form.lastName")} defaultValue={initial.lastName ?? ""} disabled={isPending} />
+        <Field name="email" label={t("contact.form.email")} type="email" defaultValue={initial.email ?? ""} disabled={isPending} />
+        <Field name="phone" label={t("contact.form.phone")} type="tel" defaultValue={initial.phone ?? ""} disabled={isPending} />
+        <Field name="company" label={t("contact.form.company")} defaultValue={initial.company ?? ""} disabled={isPending} />
+        <Field name="jobTitle" label={t("contact.form.jobTitle")} defaultValue={initial.jobTitle ?? ""} disabled={isPending} />
       </div>
 
       {errors.form && (
@@ -102,12 +72,12 @@ export function ContactForm({ contactId, initial }: Props) {
           {isPending ? (
             <>
               <Loader2 size={14} className="animate-spin" />
-              <span>Guardando en HubSpot...</span>
+              <span>{t("contact.form.saving")}</span>
             </>
           ) : (
             <>
               <Save size={14} />
-              <span>Guardar cambios</span>
+              <span>{t("common.save")}</span>
             </>
           )}
         </Button>

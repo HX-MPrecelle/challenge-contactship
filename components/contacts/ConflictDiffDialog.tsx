@@ -18,6 +18,7 @@ import {
   type ConflictDiff,
   type ConflictField,
 } from "@/actions/contacts";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   open: boolean;
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
+  const { t } = useI18n();
   const [diff, setDiff] = useState<ConflictDiff | null>(null);
   const [choices, setChoices] = useState<Record<string, "local" | "hubspot">>(
     {}
@@ -85,7 +87,7 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
         toast.error(result.error);
         return;
       }
-      toast.success("Conflicto resuelto, contacto sincronizado");
+      toast.success(t("conflicts.toast.resolved"));
       onOpenChange(false);
     });
   }
@@ -98,11 +100,10 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-error-subtle">
               <ArrowLeftRight size={15} className="text-error" />
             </div>
-            Resolver conflicto
+            {t("conflicts.dialog.title")}
           </DialogTitle>
           <DialogDescription>
-            Elegí campo por campo qué versión querés mantener. Lo guardamos en
-            HubSpot y sincronizamos el espejo local.
+            {t("conflicts.dialog.desc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,7 +134,7 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
                   className="rounded-md border border-border-default bg-bg-surface px-2 py-1 text-[10px] font-medium text-text-primary transition-colors hover:border-border-strong"
                 >
                   <CheckCheck size={10} className="mr-1 inline" />
-                  Todo local
+                  {t("conflicts.detail.allLocal")}
                 </button>
                 <button
                   type="button"
@@ -141,20 +142,20 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
                   className="rounded-md border border-border-default bg-bg-surface px-2 py-1 text-[10px] font-medium text-text-primary transition-colors hover:border-border-strong"
                 >
                   <CheckCheck size={10} className="mr-1 inline" />
-                  Todo HubSpot
+                  {t("conflicts.detail.allHubspot")}
                 </button>
               </div>
             </div>
 
             <div className="grid grid-cols-[80px_1fr_1fr] gap-2 rounded-lg border border-border-default bg-bg-subtle px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-text-muted">
-              <span>Campo</span>
+              <span>{t("conflicts.detail.campo")}</span>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-info" />
-                Local (vos)
+                {t("conflicts.detail.local")}
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                HubSpot
+                {t("conflicts.detail.hubspot")}
               </div>
             </div>
 
@@ -174,12 +175,14 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
                       active={choice === "local"}
                       same={!f.differs}
                       onClick={() => setFieldChoice(f.field, "local")}
+                      emptyLabel={t("diffDialog.empty")}
                     />
                     <DiffCell
                       value={f.hubspot}
                       active={choice === "hubspot"}
                       same={!f.differs}
                       onClick={() => setFieldChoice(f.field, "hubspot")}
+                      emptyLabel={t("diffDialog.empty")}
                     />
                   </li>
                 );
@@ -202,7 +205,7 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
             onClick={() => onOpenChange(false)}
             disabled={isSaving}
           >
-            Cancelar
+            {t("common.cancel")}
           </Button>
           <Button
             type="button"
@@ -212,10 +215,10 @@ export function ConflictDiffDialog({ open, onOpenChange, contactId }: Props) {
             {isSaving ? (
               <>
                 <Loader2 size={12} className="animate-spin" />
-                <span>Guardando...</span>
+                <span>{t("common.saving")}</span>
               </>
             ) : (
-              <span>Guardar merge</span>
+              <span>{t("conflicts.dialog.save")}</span>
             )}
           </Button>
         </DialogFooter>
@@ -229,11 +232,13 @@ function DiffCell({
   active,
   same,
   onClick,
+  emptyLabel,
 }: {
   value: string | null;
   active: boolean;
   same: boolean;
   onClick: () => void;
+  emptyLabel: string;
 }) {
   return (
     <button
@@ -249,7 +254,7 @@ function DiffCell({
       ].join(" ")}
     >
       <span className={value ? "" : "italic text-text-muted"}>
-        {value || "(vacío)"}
+        {value || emptyLabel}
       </span>
     </button>
   );

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useI18n } from "@/lib/i18n/context";
 import {
   ArrowRight,
   Eye,
@@ -24,34 +25,32 @@ type FieldErrors = {
   form?: string;
 };
 
-const COPY: Record<Mode, {
-  submit: string;
-  submitting: string;
-  toggleQuestion: string;
-  toggleAction: string;
-  helper: string;
-}> = {
-  signin: {
-    submit: "Iniciar sesión",
-    submitting: "Iniciando sesión...",
-    toggleQuestion: "¿No tenés cuenta?",
-    toggleAction: "Crear una",
-    helper: "Usá el email y contraseña con los que te registraste.",
-  },
-  signup: {
-    submit: "Crear cuenta",
-    submitting: "Creando cuenta...",
-    toggleQuestion: "¿Ya tenés cuenta?",
-    toggleAction: "Iniciar sesión",
-    helper: "La contraseña debe tener al menos 8 caracteres.",
-  },
-};
-
 export function LoginForm() {
   const router = useRouter();
+  const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("signin");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isPending, startTransition] = useTransition();
+
+  const COPY: Record<Mode, {
+    submit: string; submitting: string; toggleQuestion: string;
+    toggleAction: string; helper: string;
+  }> = {
+    signin: {
+      submit: t("login.submit.signin"),
+      submitting: t("login.submit.signin.pending"),
+      toggleQuestion: t("login.toggle.toSignup.question"),
+      toggleAction: t("login.toggle.toSignup.action"),
+      helper: t("login.helper.signin"),
+    },
+    signup: {
+      submit: t("login.submit.signup"),
+      submitting: t("login.submit.signup.pending"),
+      toggleQuestion: t("login.toggle.toSignin.question"),
+      toggleAction: t("login.toggle.toSignin.action"),
+      helper: t("login.helper.signup"),
+    },
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -67,7 +66,7 @@ export function LoginForm() {
       const password = String(formData.get("password") ?? "");
       const confirm = String(formData.get("confirmPassword") ?? "");
       if (password !== confirm) {
-        setErrors({ confirmPassword: "Las contraseñas no coinciden" });
+        setErrors({ confirmPassword: t("login.error.passwordMismatch") });
         return;
       }
     }
@@ -94,7 +93,7 @@ export function LoginForm() {
     <form action={handleSubmit} className="flex w-full flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email" className="text-sm font-medium text-text-secondary">
-          Email
+          {t("login.email.label")}
         </Label>
         <div className="relative">
           <Mail
@@ -107,7 +106,7 @@ export function LoginForm() {
             type="email"
             autoComplete="email"
             required
-            placeholder="vos@empresa.com"
+            placeholder={t("login.email.placeholder")}
             disabled={isPending}
             aria-invalid={errors.email ? "true" : undefined}
             className="h-10 pl-9"
@@ -121,9 +120,9 @@ export function LoginForm() {
       <PasswordField
         id="password"
         name="password"
-        label="Contraseña"
+        label={t("login.password.label")}
         autoComplete={mode === "signin" ? "current-password" : "new-password"}
-        placeholder={mode === "signin" ? "Tu contraseña" : "Al menos 8 caracteres"}
+        placeholder={mode === "signin" ? t("login.password.placeholder.signin") : t("login.password.placeholder.signup")}
         disabled={isPending}
         revealed={showPassword}
         onToggleReveal={() => setShowPassword((v) => !v)}
@@ -134,9 +133,9 @@ export function LoginForm() {
         <PasswordField
           id="confirmPassword"
           name="confirmPassword"
-          label="Confirmar contraseña"
+          label={t("login.confirmPassword.label")}
           autoComplete="new-password"
-          placeholder="Repetí la contraseña"
+          placeholder={t("login.confirmPassword.placeholder")}
           disabled={isPending}
           revealed={showConfirmPassword}
           onToggleReveal={() => setShowConfirmPassword((v) => !v)}

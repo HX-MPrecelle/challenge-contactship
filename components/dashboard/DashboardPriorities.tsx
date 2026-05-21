@@ -5,8 +5,10 @@ import { useEffect, useState, useTransition } from "react";
 import { ArrowRight, Loader2, RefreshCw, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getTopPriorities, type DashboardPriority } from "@/actions/ai";
+import { useI18n } from "@/lib/i18n/context";
 
 export function DashboardPriorities() {
+  const { t } = useI18n();
   const [priorities, setPriorities] = useState<DashboardPriority[] | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
@@ -42,11 +44,11 @@ export function DashboardPriorities() {
           </div>
           <div className="flex flex-col">
             <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
-              Prioridades de la semana
+              {t("dashboard.priorities.title")}
             </h2>
             {generatedAt && (
               <span className="text-[10px] text-text-muted">
-                {fromCache ? "Cache" : "Recién generado"} ·{" "}
+                {fromCache ? t("misc.cache") : t("misc.justGenerated")} ·{" "}
                 {new Date(generatedAt).toLocaleString("es-AR", {
                   dateStyle: "short",
                   timeStyle: "short",
@@ -60,7 +62,7 @@ export function DashboardPriorities() {
           size="sm"
           onClick={() => load(true)}
           disabled={isPending}
-          aria-label="Regenerar prioridades"
+          aria-label={t("dashboard.priorities.title")}
         >
           {isPending ? (
             <Loader2 size={12} className="animate-spin" />
@@ -78,7 +80,7 @@ export function DashboardPriorities() {
         </div>
       ) : !priorities || priorities.length === 0 ? (
         <p className="text-xs text-text-muted">
-          Aún no hay suficientes contactos para sugerir prioridades.
+          {t("dashboard.priorities.noContacts")}
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
@@ -112,8 +114,7 @@ export function DashboardPriorities() {
       <footer className="flex items-center gap-1.5 border-t border-border-default pt-3 text-[10px] text-text-muted">
         <Sparkles size={10} />
         <span>
-          Top {priorities?.length ?? 0} elegidos por GPT sobre los 30 contactos más recientes ·
-          regenera cada 30 minutos
+          {t("dashboard.priorities.footer", { n: priorities?.length ?? 0 })}
         </span>
       </footer>
     </section>

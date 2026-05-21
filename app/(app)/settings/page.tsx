@@ -15,6 +15,7 @@ import { BackButton } from "@/components/layout/BackButton";
 import { createClient } from "@/lib/supabase/server";
 import { OrgNameForm } from "./OrgNameForm";
 import { HubSpotActions } from "./HubSpotActions";
+import { getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function SettingsPage({ searchParams }: Props) {
   const { section = "general" } = await searchParams;
 
   const supabase = await createClient();
+  const { t } = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -60,9 +62,9 @@ export default async function SettingsPage({ searchParams }: Props) {
     <main className="mx-auto max-w-5xl px-6 py-8">
       <BackButton />
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-text-primary">Settings</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">{t("settings.title")}</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Configuración de organización, HubSpot y preferencias de IA.
+          {t("settings.subtitle")}
         </p>
       </div>
 
@@ -71,23 +73,23 @@ export default async function SettingsPage({ searchParams }: Props) {
           {section === "general" && (
             <>
               <SettingsSection
-                title="Organización"
-                description="Información básica de tu workspace."
+                title={t("settings.general.title")}
+                description={t("settings.general.desc")}
               >
                 <SettingsRow
-                  title="Nombre de la organización"
-                  description="Se muestra en toda la interfaz y en los emails."
+                  title={t("settings.general.orgName")}
+                  description={t("settings.general.orgNameDesc")}
                 >
                   <OrgNameForm currentName={org?.name ?? ""} />
                 </SettingsRow>
                 <SettingsRow
-                  title="Dominio de email"
-                  description="Dominio del workspace. No editable."
+                  title={t("settings.general.domain")}
+                  description={t("settings.general.domainDesc")}
                 >
                   <span className="font-mono text-xs text-text-muted">
                     {org?.email_domain
                       ? org.email_domain
-                      : `Genérico · ${user.email?.split("@")[1] ?? "—"}`}
+                      : t("settings.general.domainGeneric", { domain: user.email?.split("@")[1] ?? "—" })}
                   </span>
                 </SettingsRow>
               </SettingsSection>
@@ -122,11 +124,11 @@ export default async function SettingsPage({ searchParams }: Props) {
                       {isConnected ? (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success">
                           <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-dot" />
-                          Live
+                          {t("settings.hubspot.live")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning">
-                          Desconectado
+                          {t("settings.hubspot.disconnected")}
                         </span>
                       )}
                     </div>
@@ -137,7 +139,7 @@ export default async function SettingsPage({ searchParams }: Props) {
                           Portal {connection.portal_id}
                         </span>
                         <span className="font-mono text-xs text-text-muted">
-                          {contactCount ?? 0} contactos sincronizados
+                          {t("settings.hubspot.contactsSynced", { n: contactCount ?? 0 })}
                         </span>
                         <span className="font-mono text-xs text-text-muted">
                           Conectado{" "}
@@ -169,8 +171,8 @@ export default async function SettingsPage({ searchParams }: Props) {
                         <Link href="/api/hubspot/connect">
                           <Plug size={14} />
                           {connection?.needs_reconnect
-                            ? "Reconectar"
-                            : "Conectar HubSpot"}
+                            ? t("settings.hubspot.reconnect")
+                            : t("settings.hubspot.connect")}
                         </Link>
                       </Button>
                     )}
@@ -185,16 +187,16 @@ export default async function SettingsPage({ searchParams }: Props) {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-text-primary">
-                      Sin portal conectado
+                      {t("settings.hubspot.noPortal")}
                     </p>
                     <p className="mt-1 text-xs text-text-secondary">
-                      Conectá tu portal de HubSpot para sincronizar contactos.
+                      {t("settings.hubspot.noPortalDesc")}
                     </p>
                   </div>
                   <Button asChild size="sm">
                     <Link href="/api/hubspot/connect">
                       <Plug size={14} />
-                      Conectar HubSpot
+                      {t("settings.hubspot.connect")}
                     </Link>
                   </Button>
                 </div>
@@ -206,27 +208,27 @@ export default async function SettingsPage({ searchParams }: Props) {
           {section === "sync" && (
             <>
               <SettingsSection
-                title="Sincronización"
-                description="Configurá cómo se comporta el sync entre ContactShip y HubSpot."
+                title={t("nav.settings.sync")}
+                description={t("settings.sync.bidirDesc")}
               >
                 <SettingsRow
-                  title="Sync bidireccional"
-                  description="Los cambios locales se escriben en HubSpot automáticamente."
+                  title={t("settings.sync.bidir")}
+                  description={t("settings.sync.bidirDesc")}
                 >
                   <TogglePlaceholder defaultOn />
                 </SettingsRow>
                 <SettingsRow
-                  title="Webhooks de HubSpot"
-                  description="Recibe cambios de HubSpot en tiempo real."
+                  title={t("settings.sync.webhooks")}
+                  description={t("settings.sync.webhooksDesc")}
                 >
                   <TogglePlaceholder defaultOn />
                 </SettingsRow>
                 <SettingsRow
-                  title="Estrategia de conflictos"
-                  description="Qué versión gana cuando hay un conflicto de datos."
+                  title={t("settings.sync.strategy")}
+                  description={t("settings.sync.strategyDesc")}
                 >
                   <span className="rounded-md border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary">
-                    Manual (revisar en /conflicts)
+                    {t("settings.sync.strategyValue")}
                   </span>
                 </SettingsRow>
               </SettingsSection>
@@ -238,26 +240,26 @@ export default async function SettingsPage({ searchParams }: Props) {
           {/* ── AI ── */}
           {section === "ai" && (
             <SettingsSection
-              title="Inteligencia Artificial"
-              description="Configurá el comportamiento del copiloto de IA."
+              title={t("nav.settings.ai")}
+              description={t("settings.ai.autoGenerateDesc")}
             >
               <SettingsRow
-                title="Generar insights automáticamente"
-                description="Genera AI Insights al abrir el perfil de un contacto."
+                title={t("settings.ai.autoGenerate")}
+                description={t("settings.ai.autoGenerateDesc")}
               >
                 <TogglePlaceholder defaultOn />
               </SettingsRow>
               <SettingsRow
-                title="Modelo de lenguaje"
-                description="Modelo que usa el chat y los insights."
+                title={t("settings.ai.model")}
+                description={t("settings.ai.modelDesc")}
               >
                 <span className="font-mono text-xs text-text-muted">
                   claude-3-5-haiku · Anthropic
                 </span>
               </SettingsRow>
               <SettingsRow
-                title="Embeddings"
-                description="Modelo para búsqueda semántica y contactos similares."
+                title={t("settings.ai.embeddings")}
+                description={t("settings.ai.embeddingsDesc")}
               >
                 <span className="font-mono text-xs text-text-muted">
                   text-embedding-3-small · OpenAI

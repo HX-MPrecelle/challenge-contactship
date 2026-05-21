@@ -8,6 +8,7 @@ import { ContactTimeline } from "@/components/contacts/ContactTimeline";
 import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
 import { createClient } from "@/lib/supabase/server";
+import { getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function ContactDetailPage({ params }: Props) {
   const { id } = await params;
 
   const supabase = await createClient();
+  const { t } = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,7 +55,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
   const fullName =
     [contact.first_name, contact.last_name].filter(Boolean).join(" ") ||
-    "Sin nombre";
+    t("misc.noName");
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
@@ -63,7 +65,7 @@ export default async function ContactDetailPage({ params }: Props) {
         className="mb-6 inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary"
       >
         <ArrowLeft size={12} />
-        Volver a contactos
+        {t("contact.back")}
       </Link>
 
       {/* Hero — name + inline metadata strip */}
@@ -96,7 +98,7 @@ export default async function ContactDetailPage({ params }: Props) {
               )}
               {(contact.properties as Record<string, string | null> | null)?.numemployees && (
                 <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
-                  {(contact.properties as Record<string, string | null>).numemployees} empl.
+                  {(contact.properties as Record<string, string | null>).numemployees} {t("misc.employees")}
                 </span>
               )}
               {contact.country && (
@@ -126,7 +128,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
         {contact.is_archived && (
           <div className="rounded-lg border border-warning/40 bg-warning-subtle px-4 py-2.5 text-xs text-warning">
-            Este contacto fue archivado desde HubSpot.
+            {t("contacts.archived")}
           </div>
         )}
         {contact.sync_status === "conflict" && (
@@ -140,7 +142,7 @@ export default async function ContactDetailPage({ params }: Props) {
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <h2 className="pb-4 text-lg font-semibold text-text-primary">
-              Datos del contacto
+              {t("contact.section.data")}
             </h2>
             <ContactForm
               contactId={contact.id}
@@ -163,7 +165,7 @@ export default async function ContactDetailPage({ params }: Props) {
         <aside className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <header className="flex items-baseline justify-between pb-4">
-              <h2 className="text-base font-semibold text-text-primary">Actividad</h2>
+              <h2 className="text-base font-semibold text-text-primary">{t("contact.section.activity")}</h2>
               <span className="font-mono text-[10px] text-text-muted">
                 {new Date(contact.local_updated_at).toLocaleString("es-AR", {
                   dateStyle: "short",

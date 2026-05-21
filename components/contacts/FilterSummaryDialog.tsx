@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { summarizeFilteredContacts } from "@/actions/ai";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   open: boolean;
@@ -27,6 +28,7 @@ export function FilterSummaryDialog({
   query,
   filters,
 }: Props) {
+  const { t } = useI18n();
   const [summary, setSummary] = useState<string | null>(null);
   const [stats, setStats] = useState<{ analyzed: number; total: number } | null>(
     null
@@ -70,7 +72,7 @@ export function FilterSummaryDialog({
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-subtle">
               <Sparkles size={15} className="text-brand-on-subtle" />
             </div>
-            Análisis del filtro
+            {t("filterSummary.title")}
           </DialogTitle>
           <DialogDescription>
             &ldquo;{query}&rdquo; — patrones, gaps y próximos pasos.
@@ -81,7 +83,7 @@ export function FilterSummaryDialog({
           <div className="flex flex-col items-center gap-3 py-8">
             <Loader2 size={24} className="animate-spin text-brand" />
             <p className="text-xs text-text-secondary">
-              Analizando contactos...
+              {t("filterSummary.analyzing")}
             </p>
           </div>
         ) : summary ? (
@@ -89,24 +91,17 @@ export function FilterSummaryDialog({
             {stats && (
               <div className="flex items-center justify-between rounded-lg border border-border-default bg-bg-subtle px-3 py-2 text-xs">
                 <span className="text-text-secondary">
-                  Analizados:{" "}
-                  <span className="font-mono font-semibold text-text-primary">
-                    {stats.analyzed}
-                  </span>{" "}
-                  de{" "}
-                  <span className="font-mono font-semibold text-text-primary">
-                    {stats.total}
-                  </span>
+                  {t("filterSummary.stats", { analyzed: stats.analyzed, total: stats.total })}
                 </span>
                 {stats.total > stats.analyzed ? (
                   <span className="inline-flex items-center gap-1.5 text-warning">
                     <span className="h-1.5 w-1.5 rounded-full bg-warning" />
-                    Muestra parcial
+                    {t("filterSummary.partial")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-success">
                     <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                    Muestra completa
+                    {t("filterSummary.full")}
                   </span>
                 )}
               </div>
@@ -123,7 +118,7 @@ export function FilterSummaryDialog({
             variant="ghost"
             onClick={() => onOpenChange(false)}
           >
-            Cerrar
+            {t("common.close")}
           </Button>
         </DialogFooter>
       </DialogContent>

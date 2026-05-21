@@ -5,8 +5,10 @@ import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { triggerResync, reembedAllContacts } from "@/actions/settings";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ResyncButton() {
+  const { t } = useI18n();
   const [isSyncing, startSync] = useTransition();
   const [isEmbedding, startEmbed] = useTransition();
 
@@ -18,15 +20,15 @@ export function ResyncButton() {
         toast.success(result.message);
       })} disabled={isSyncing || isEmbedding}>
         {isSyncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-        Re-sync ahora
+        {t("sync.resync")}
       </Button>
       <Button variant="ghost" size="sm" onClick={() => startEmbed(async () => {
         const result = await reembedAllContacts();
         if (!result.success) { toast.error(result.error); return; }
         toast.info(result.message, { duration: 6000 });
-      })} disabled={isSyncing || isEmbedding} title="Re-generar embeddings con datos enriquecidos">
+      })} disabled={isSyncing || isEmbedding} title={t("settings.reembed.tooltip")}>
         {isEmbedding ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-        Re-embed
+        {t("sync.reembed")}
       </Button>
     </div>
   );

@@ -5,8 +5,10 @@ import { Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { disconnectHubSpot, triggerResync } from "@/actions/settings";
+import { useI18n } from "@/lib/i18n/context";
 
 export function HubSpotActions() {
+  const { t } = useI18n();
   const [isSyncing, startSync] = useTransition();
   const [isDisconnecting, startDisconnect] = useTransition();
 
@@ -22,11 +24,7 @@ export function HubSpotActions() {
   }
 
   function handleDisconnect() {
-    if (
-      !confirm(
-        "¿Seguro que querés desconectar HubSpot? Los contactos sincronizados se mantienen pero no habrá nuevos updates."
-      )
-    )
+    if (!confirm(t("settings.hubspot.disconnectConfirm")))
       return;
 
     startDisconnect(async () => {
@@ -47,7 +45,7 @@ export function HubSpotActions() {
         ) : (
           <RefreshCw size={13} />
         )}
-        Re-sync
+        {t("settings.hubspot.resync")}
       </Button>
       <Button
         variant="ghost"
@@ -61,7 +59,7 @@ export function HubSpotActions() {
         ) : (
           <Trash2 size={13} />
         )}
-        Desconectar
+        {t("settings.hubspot.disconnect")}
       </Button>
     </div>
   );

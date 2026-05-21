@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateOrgName } from "@/actions/settings";
+import { useI18n } from "@/lib/i18n/context";
 
 export function OrgNameForm({ currentName }: { currentName: string }) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(currentName);
   const [isPending, startTransition] = useTransition();
@@ -19,7 +21,7 @@ export function OrgNameForm({ currentName }: { currentName: string }) {
         toast.error(result.error);
         return;
       }
-      toast.success("Nombre actualizado");
+      toast.success(t("settings.orgName.updated"));
       setEditing(false);
     });
   }
@@ -32,7 +34,7 @@ export function OrgNameForm({ currentName }: { currentName: string }) {
           variant="ghost"
           size="sm"
           onClick={() => setEditing(true)}
-          aria-label="Editar nombre"
+          aria-label={t("settings.orgName.editAria")}
         >
           <Pencil size={13} />
         </Button>
@@ -62,7 +64,7 @@ export function OrgNameForm({ currentName }: { currentName: string }) {
         onClick={() => { setValue(currentName); setEditing(false); }}
         disabled={isPending}
       >
-        Cancelar
+        {t("common.cancel")}
       </Button>
     </div>
   );

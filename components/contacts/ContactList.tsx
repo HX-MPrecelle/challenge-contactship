@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useI18n } from "@/lib/i18n/context";
 import { BarChart3, Loader2, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -49,14 +50,7 @@ type Props = {
   initialStatusFilter?: SyncStatus | null;
 };
 
-const STATUS_LABEL: Record<SyncStatus, string> = {
-  synced: "sincronizados",
-  pending: "pendientes",
-  conflict: "en conflicto",
-  error: "con error",
-};
-
-const LIFECYCLE_FILTERS = [
+const LIFECYCLE_FILTER_VALUES = [
   { value: "opportunity", label: "Opportunity" },
   { value: "salesqualifiedlead", label: "SQL" },
   { value: "marketingqualifiedlead", label: "MQL" },
@@ -65,13 +59,6 @@ const LIFECYCLE_FILTERS = [
   { value: "subscriber", label: "Subscriber" },
 ] as const;
 
-const STATUS_FILTERS: { value: SyncStatus; label: string; dot: string }[] = [
-  { value: "synced", label: "Synced", dot: "bg-success" },
-  { value: "pending", label: "Pendiente", dot: "bg-warning" },
-  { value: "conflict", label: "Conflicto", dot: "bg-error animate-pulse-dot" },
-  { value: "error", label: "Error", dot: "bg-error" },
-];
-
 const PAGE_SIZE = 10;
 
 export function ContactList({
@@ -79,6 +66,23 @@ export function ContactList({
   orgId,
   initialStatusFilter,
 }: Props) {
+  const { t } = useI18n();
+
+  // Build translated filter arrays inside the component so they react to locale changes
+  const STATUS_LABEL: Record<SyncStatus, string> = {
+    synced: t("contacts.filter.status.synced"),
+    pending: t("contacts.filter.status.pending"),
+    conflict: t("contacts.filter.status.conflict"),
+    error: t("contacts.filter.status.error"),
+  };
+
+  const STATUS_FILTERS: { value: SyncStatus; label: string; dot: string }[] = [
+    { value: "synced",   label: t("contacts.filter.status.synced"),   dot: "bg-success" },
+    { value: "pending",  label: t("contacts.filter.status.pending"),  dot: "bg-warning" },
+    { value: "conflict", label: t("contacts.filter.status.conflict"), dot: "bg-error animate-pulse-dot" },
+    { value: "error",    label: t("contacts.filter.status.error"),    dot: "bg-error" },
+  ];
+
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
   const [query, setQuery] = useState("");
   const [aiFilter, setAiFilter] = useState<AiFilter | null>(null);
@@ -173,7 +177,7 @@ export function ContactList({
   function runAiSearch() {
     const q = query.trim();
     if (!q) {
-      toast.error("Escribí una consulta primero");
+      toast.error(t("contacts.ai.error.empty"));
       return;
     }
     startParsing(async () => {
@@ -184,7 +188,7 @@ export function ContactList({
       }
       if (result.data.filters.length === 0) {
         toast.warning(
-          "No pude traducir esa consulta. Probá con algo más específico."
+          t("contacts.ai.error.noFilters")
         );
         return;
       }
@@ -220,7 +224,7 @@ export function ContactList({
   function bulkResync() {
     const ids = [...selected];
     startBulk(async () => {
-      const { toast: t } = await import("sonner");
+      const { toast: tt } = await import("sonner");
       const { createClient: cc } = await import("@/lib/supabase/client");
       const supabase = cc();
       const { error } = await supabase
@@ -228,9 +232,9 @@ export function ContactList({
         .update({ sync_status: "pending" })
         .in("id", ids)
         .eq("org_id", orgId);
-      if (error) { t.error(error.message); return; }
+      if (error) { tt.error(error.message); return; }
       // The realtime subscription will update each row when sync completes.
-      t.info(`${ids.length} contacto${ids.length === 1 ? "" : "s"} en cola de sync. El status se actualizará en tiempo real.`, {
+      tt.info(`${ids.length} contacto${ids.length === 1 ? "" : "s"} en cola de sync. El status se actualizará en tiempo real.`, {
         duration: 5000,
         icon: "🔄",
       });
@@ -241,7 +245,7 @@ export function ContactList({
   function bulkArchive() {
     const ids = [...selected];
     startBulk(async () => {
-      const { toast: t } = await import("sonner");
+      const { toast: tt } = await import("sonner");
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error } = await supabase
@@ -249,8 +253,8 @@ export function ContactList({
         .update({ is_archived: true })
         .in("id", ids)
         .eq("org_id", orgId);
-      if (error) { t.error(error.message); return; }
-      t.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} archivado${ids.length === 1 ? "" : "s"}`);
+      if (error) { tt.error(error.message); return; }
+      tt.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} archivado${ids.length === 1 ? "" : "s"}`);
       setSelected(new Set());
     });
   }
@@ -270,7 +274,7 @@ export function ContactList({
             onKeyDown={(e) => {
               if (e.key === "Enter" && e.metaKey) runAiSearch();
             }}
-            placeholder="Buscar — texto rápido o consulta en lenguaje natural"
+            placeholder={t("contacts.search.placeholder")}
             className="h-10 pl-9"
           />
         </div>
@@ -279,14 +283,14 @@ export function ContactList({
           size="default"
           onClick={runAiSearch}
           disabled={isParsing}
-          aria-label="Interpretar como búsqueda en lenguaje natural"
+          aria-label={t("contacts.search.aiLabel")}
         >
           {isParsing ? (
             <Loader2 size={14} className="animate-spin" />
           ) : (
             <Sparkles size={14} />
           )}
-          <span>AI search</span>
+          <span>{t("contacts.search.aiButton")}</span>
         </Button>
       </div>
 
@@ -295,7 +299,7 @@ export function ContactList({
         {/* Lifecycle stage — select dropdown */}
         <div className="flex items-center gap-2">
           <label className="text-[11px] font-medium uppercase tracking-wider text-text-muted" htmlFor="stage-filter">
-            Etapa:
+            {t("contacts.filter.stage")}
           </label>
           <select
             id="stage-filter"
@@ -304,8 +308,8 @@ export function ContactList({
             className="h-7 appearance-none rounded-md border border-border-default bg-bg-surface px-2 pr-6 text-xs text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
             style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239098A0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center" }}
           >
-            <option value="">Todas</option>
-            {LIFECYCLE_FILTERS.map((f) => (
+            <option value="">{t("contacts.filter.stage.all")}</option>
+            {LIFECYCLE_FILTER_VALUES.map((f) => (
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
@@ -313,7 +317,7 @@ export function ContactList({
 
         {/* Sync status — pills */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Sync:</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">{t("contacts.filter.sync")}</span>
           {STATUS_FILTERS.map((f) => (
             <button
               key={f.value}
@@ -339,7 +343,7 @@ export function ContactList({
             className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary"
           >
             <X size={12} />
-            Limpiar filtros
+            {t("contacts.filter.clear")}
           </button>
         )}
       </div>
@@ -350,7 +354,7 @@ export function ContactList({
             <Sparkles size={14} className="mt-0.5 shrink-0 text-brand-on-subtle" />
             <div className="flex flex-col gap-0.5">
               <span className="font-medium text-text-primary">
-                Búsqueda con IA aplicada
+                {t("contacts.ai.applied")}
               </span>
               <span className="text-xs text-text-secondary">
                 {aiFilter.explanation}
@@ -364,16 +368,16 @@ export function ContactList({
               variant="secondary"
               onClick={() => setSummaryOpen(true)}
               disabled={filtered.length === 0}
-              title="Análisis IA sobre los contactos filtrados"
+              title={t("contacts.ai.summarize", { n: filtered.length })}
             >
               <BarChart3 size={12} />
-              Resumir {filtered.length}
+              {t("contacts.ai.summarize", { n: filtered.length })}
             </Button>
             <button
               type="button"
               onClick={() => setAiFilter(null)}
               className="text-xs text-text-secondary hover:text-text-primary"
-              aria-label="Limpiar filtro"
+              aria-label={t("contacts.filter.clear")}
             >
               <X size={14} />
             </button>
@@ -393,26 +397,20 @@ export function ContactList({
       {selected.size > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-border-strong bg-bg-surface px-4 py-2.5 shadow-cs-sm">
           <span className="text-sm font-medium text-text-primary">
-            {selected.size} seleccionado{selected.size === 1 ? "" : "s"}
+            {t("contacts.bulk.selected", { n: selected.size, plural: selected.size === 1 ? "" : "s" })}
           </span>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="secondary" onClick={bulkResync} disabled={isBulking}>
               <RefreshCw size={12} />
-              Re-sync
+              {t("contacts.bulk.resync")}
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={bulkArchive}
-              disabled={isBulking}
-              className="text-error hover:bg-error-subtle hover:text-error"
-            >
+            <Button size="sm" variant="ghost" onClick={bulkArchive} disabled={isBulking} className="text-error hover:bg-error-subtle hover:text-error">
               <Trash2 size={12} />
-              Archivar
+              {t("contacts.bulk.archive")}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
               <X size={12} />
-              Deseleccionar
+              {t("contacts.bulk.deselect")}
             </Button>
           </div>
         </div>
@@ -433,12 +431,12 @@ export function ContactList({
                   }}
                 />
               </th>
-              <th className="px-4 py-2.5">Nombre</th>
-              <th className="px-4 py-2.5">Email</th>
-              <th className="px-4 py-2.5">Empresa</th>
-              <th className="px-4 py-2.5">Cargo</th>
-              <th className="px-4 py-2.5">Etapa</th>
-              <th className="px-4 py-2.5">Sync</th>
+              <th className="px-4 py-2.5">{t("contacts.table.name")}</th>
+              <th className="px-4 py-2.5">{t("contacts.table.email")}</th>
+              <th className="px-4 py-2.5">{t("contacts.table.company")}</th>
+              <th className="px-4 py-2.5">{t("contacts.table.jobTitle")}</th>
+              <th className="px-4 py-2.5">{t("contacts.table.stage")}</th>
+              <th className="px-4 py-2.5">{t("contacts.table.sync")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-default text-text-primary">
@@ -449,8 +447,8 @@ export function ContactList({
                   className="px-4 py-10 text-center text-sm text-text-muted"
                 >
                   {contacts.length === 0
-                    ? "Sin contactos sincronizados todavía."
-                    : "Ningún contacto coincide con los filtros activos."}
+                    ? t("contacts.empty.noContacts")
+                    : t("contacts.empty.noMatch")}
                 </td>
               </tr>
             )}
@@ -519,9 +517,7 @@ export function ContactList({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-text-muted">
-          {filtered.length} contacto{filtered.length === 1 ? "" : "s"}
-          {(statusFilter || lifecycleFilter || aiFilter) ? " coinciden" : " totales"}
-          {" · "}página {page + 1} de {totalPages}
+          {t("contacts.footer", { shown: filtered.length, page: page + 1, total: totalPages })}
         </p>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">

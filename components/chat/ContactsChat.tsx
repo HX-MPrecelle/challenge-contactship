@@ -33,19 +33,14 @@ import {
   deleteConversation,
 } from "@/actions/chat";
 import type { ChatUIMessage, ContactCitation } from "@/types/chat";
+import { useI18n } from "@/lib/i18n/context";
 
 const PERSONA_STORAGE_KEY = "contactship.chat.persona";
-
-const EXAMPLES = [
-  "¿Cuáles son los patrones comunes entre mis leads cerrados?",
-  "¿Qué contactos debería priorizar esta semana y por qué?",
-  "Resumime el estado general de mi pipeline.",
-  "¿Hay industrias sin atender con perfil similar a mis mejores clientes?",
-] as const;
 
 type Conversation = { id: string; title: string; updated_at: string };
 
 export function ContactsChat() {
+  const { t } = useI18n();
   const [persona, setPersona] = useState<ChatPersona>("concise");
   const [convId, setConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -179,7 +174,7 @@ export function ContactsChat() {
             onClick={startNewConversation}
           >
             <Plus size={14} />
-            Nueva conversación
+            {t("chat.new")}
           </Button>
         </div>
 
@@ -192,13 +187,13 @@ export function ContactsChat() {
             </div>
           ) : conversations.length === 0 ? (
             <p className="px-2 pt-4 text-xs text-text-muted">
-              Sin conversaciones todavía.
+              {t("chat.history.none")}
             </p>
           ) : (
             Object.entries(grouped).map(([group, items]) => (
               <div key={group} className="mb-3">
                 <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                  {group}
+                  {t(group as GroupKey)}
                 </p>
                 {items.map((c) => (
                   <div
@@ -216,7 +211,7 @@ export function ContactsChat() {
                       type="button"
                       onClick={(e) => handleDelete(c.id, e)}
                       className="hidden shrink-0 text-text-muted group-hover:flex hover:text-error"
-                      aria-label="Eliminar conversación"
+                      aria-label={t("chat.history.delete")}
                     >
                       <Trash2 size={11} />
                     </button>
@@ -238,7 +233,7 @@ export function ContactsChat() {
               className="flex items-center gap-1 text-xs text-text-secondary transition-colors hover:text-text-primary"
             >
               <ArrowLeft size={12} />
-              Dashboard
+              {t("chat.back")}
             </Link>
             <div className="h-4 w-px bg-border-default" />
             <div className="flex h-8 w-8 items-center justify-center rounded-md bg-brand-subtle">
@@ -246,10 +241,10 @@ export function ContactsChat() {
             </div>
             <div>
               <h1 className="text-sm font-semibold text-text-primary">
-                Chat con tu base
+                {t("chat.title")}
               </h1>
               <p className="text-xs text-text-muted">
-                Preguntas en lenguaje natural sobre contactos.
+                {t("chat.subtitle")}
               </p>
             </div>
           </div>
@@ -284,7 +279,7 @@ export function ContactsChat() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
               </span>
-              <span className="text-brand-on-subtle">Escuchando…</span>
+              <span className="text-brand-on-subtle">{t("chat.voice.listening")}</span>
               {voice.interim && (
                 <span className="truncate italic text-text-secondary">
                   &ldquo;{voice.interim}&rdquo;
@@ -303,7 +298,7 @@ export function ContactsChat() {
                 }
               }}
               rows={2}
-              placeholder="Escribí tu pregunta. Shift+Enter para nueva línea."
+              placeholder={t("chat.placeholder")}
               className="min-h-[44px] flex-1 resize-none bg-transparent px-2 py-1 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             />
             <div className="flex shrink-0 items-center gap-1">
@@ -313,7 +308,7 @@ export function ContactsChat() {
                   variant={voice.listening ? "secondary" : "ghost"}
                   size="sm"
                   onClick={voice.listening ? voice.stop : voice.start}
-                  aria-label={voice.listening ? "Detener micrófono" : "Hablar"}
+                  aria-label={voice.listening ? t("chat.voice.stop") : t("chat.voice.start")}
                 >
                   {voice.listening ? <MicOff size={14} /> : <Mic size={14} />}
                 </Button>
@@ -334,7 +329,7 @@ export function ContactsChat() {
             </div>
           </div>
           <p className="mt-2 text-center text-[10px] text-text-muted">
-            Las respuestas pueden contener errores. Verificá información crítica.
+            {t("chat.disclaimer")}
           </p>
         </div>
       </div>
@@ -349,10 +344,11 @@ function PersonaToggle({
   persona: ChatPersona;
   onChange: (next: ChatPersona) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-end gap-1">
       <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
-        Persona
+        {t("chat.persona.label")}
       </span>
       <div className="inline-flex rounded-lg border border-border-default bg-bg-surface p-0.5">
         {PERSONAS.map((p) => {
@@ -447,11 +443,12 @@ function ThinkingDots() {
 }
 
 function Citations({ contacts }: { contacts: ContactCitation[] }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col gap-1.5">
       <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
         <Sparkles size={9} />
-        Basado en {contacts.length} contacto{contacts.length === 1 ? "" : "s"}
+        {t("chat.citations.basedOn", { n: contacts.length, plural: contacts.length === 1 ? "" : "s" })}
       </span>
       <div className="flex flex-wrap gap-1">
         {contacts.map((c) => (
@@ -475,6 +472,13 @@ function Citations({ contacts }: { contacts: ContactCitation[] }) {
 }
 
 function ChatEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
+  const { t } = useI18n();
+  const examples = [
+    t("chat.example.1"),
+    t("chat.example.2"),
+    t("chat.example.3"),
+    t("chat.example.4"),
+  ];
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-subtle">
@@ -482,15 +486,14 @@ function ChatEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
       </div>
       <div className="flex flex-col gap-2">
         <h2 className="text-base font-semibold text-text-primary">
-          Hacé una pregunta sobre tu base
+          {t("chat.empty.title")}
         </h2>
         <p className="max-w-sm text-sm text-text-secondary">
-          El asistente recupera los contactos más relevantes vía similarity
-          search y razona sobre ellos.
+          {t("chat.empty.desc")}
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        {EXAMPLES.map((example) => (
+        {examples.map((example) => (
           <button
             key={example}
             type="button"
@@ -505,21 +508,23 @@ function ChatEmptyState({ onPick }: { onPick: (prompt: string) => void }) {
   );
 }
 
-function groupByDate(convos: Conversation[]): Record<string, Conversation[]> {
+type GroupKey = "chat.history.today" | "chat.history.yesterday" | "chat.history.week" | "chat.history.older";
+
+function groupByDate(convos: Conversation[]): Record<GroupKey, Conversation[]> {
   const now = Date.now();
   const DAY = 86400000;
-  const groups: Record<string, Conversation[]> = {};
+  const groups: Partial<Record<GroupKey, Conversation[]>> = {};
 
   for (const c of convos) {
     const diff = now - new Date(c.updated_at).getTime();
-    let group: string;
-    if (diff < DAY) group = "Hoy";
-    else if (diff < 2 * DAY) group = "Ayer";
-    else if (diff < 7 * DAY) group = "Esta semana";
-    else group = "Anteriores";
+    let group: GroupKey;
+    if (diff < DAY) group = "chat.history.today";
+    else if (diff < 2 * DAY) group = "chat.history.yesterday";
+    else if (diff < 7 * DAY) group = "chat.history.week";
+    else group = "chat.history.older";
 
     if (!groups[group]) groups[group] = [];
     (groups[group] as Conversation[]).push(c);
   }
-  return groups;
+  return groups as Record<GroupKey, Conversation[]>;
 }

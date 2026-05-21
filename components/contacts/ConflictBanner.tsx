@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConflictDiffDialog } from "@/components/contacts/ConflictDiffDialog";
 import { resolveConflict } from "@/actions/contacts";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ConflictBanner({ contactId }: { contactId: string }) {
+  const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [pendingChoice, setPendingChoice] = useState<
     "keep_local" | "use_hubspot" | null
@@ -25,8 +27,8 @@ export function ConflictBanner({ contactId }: { contactId: string }) {
       }
       toast.success(
         choice === "keep_local"
-          ? "Tus cambios fueron escritos en HubSpot"
-          : "El contacto ahora refleja la versión de HubSpot"
+          ? t("conflict.toast.keptLocal")
+          : t("conflict.toast.usedHubspot")
       );
     });
   }
@@ -37,39 +39,24 @@ export function ConflictBanner({ contactId }: { contactId: string }) {
         <div className="flex items-start gap-2.5">
           <AlertTriangle size={16} className="mt-0.5 shrink-0 text-error" />
           <div className="flex flex-col gap-0.5">
-            <p className="font-medium text-text-primary">Conflicto detectado</p>
+            <p className="font-medium text-text-primary">{t("conflict.banner.title")}</p>
             <p className="text-xs text-text-secondary">
-              Este contacto fue editado en HubSpot mientras vos lo modificabas
-              localmente. Resolvelo campo por campo o aplicá una versión completa.
+              {t("conflict.banner.desc")}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button size="sm" onClick={() => setDiffOpen(true)} disabled={isPending}>
             <ArrowLeftRight size={12} />
-            Resolver con diff
+            {t("conflict.banner.diff")}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => resolve("keep_local")}
-            disabled={isPending}
-          >
-            {isPending && pendingChoice === "keep_local" ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : null}
-            Mantener mis cambios
+          <Button variant="secondary" size="sm" onClick={() => resolve("keep_local")} disabled={isPending}>
+            {isPending && pendingChoice === "keep_local" ? <Loader2 size={12} className="animate-spin" /> : null}
+            {t("conflict.banner.keepLocal")}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => resolve("use_hubspot")}
-            disabled={isPending}
-          >
-            {isPending && pendingChoice === "use_hubspot" ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : null}
-            Usar versión de HubSpot
+          <Button variant="ghost" size="sm" onClick={() => resolve("use_hubspot")} disabled={isPending}>
+            {isPending && pendingChoice === "use_hubspot" ? <Loader2 size={12} className="animate-spin" /> : null}
+            {t("conflict.banner.useHubspot")}
           </Button>
         </div>
       </div>

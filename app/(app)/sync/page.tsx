@@ -5,11 +5,13 @@ import { SyncHealthPanel } from "@/components/sync/SyncHealthPanel";
 import { createClient } from "@/lib/supabase/server";
 import { ResyncButton } from "./ResyncButton";
 import { BackButton } from "@/components/layout/BackButton";
+import { getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function SyncPage() {
   const supabase = await createClient();
+  const { t } = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,9 +38,9 @@ export default async function SyncPage() {
       <BackButton />
       <header className="flex items-start justify-between pb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Sync Health</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">{t("sync.title")}</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Estado del pipeline de sincronización con HubSpot.
+            {t("sync.subtitle")}
           </p>
         </div>
         <ResyncButton />
@@ -55,11 +57,11 @@ export default async function SyncPage() {
             </div>
             <div>
               <span className="text-sm font-medium text-text-primary">
-                {connection.portal_name ?? "Portal HubSpot"}
+                {connection.portal_name ?? t("nav.settings.hubspot")}
               </span>
               {connection.last_synced_at && (
                 <p className="font-mono text-xs text-text-muted">
-                  Último sync:{" "}
+                  {t("sync.lastSync")}{" "}
                   {new Date(connection.last_synced_at).toLocaleString("es-AR", {
                     dateStyle: "medium",
                     timeStyle: "short",
@@ -71,12 +73,12 @@ export default async function SyncPage() {
           <div className="flex items-center gap-1.5">
             {connection.needs_reconnect ? (
               <span className="rounded-full bg-error-subtle px-2 py-0.5 text-xs font-medium text-error">
-                Reconectar
+                {t("settings.hubspot.reconnect")}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-success-subtle px-2 py-0.5 text-xs font-medium text-success">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-dot" />
-                Live
+                {t("settings.hubspot.live")}
               </span>
             )}
           </div>
@@ -89,17 +91,17 @@ export default async function SyncPage() {
       <section className="mt-6 flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-text-primary">
-            Actividad reciente
+            {t("sync.activity.title")}
           </h2>
           <Link
             href="/activity"
             className="text-xs text-brand hover:underline"
           >
-            Ver todo →
+            {t("sync.activity.viewAll")}
           </Link>
         </div>
         {(recentEvents ?? []).length === 0 ? (
-          <p className="text-sm text-text-muted">Sin eventos registrados.</p>
+          <p className="text-sm text-text-muted">{t("sync.activity.none")}</p>
         ) : (
           <div className="max-h-72 overflow-y-auto rounded-lg border border-border-default">
             <ol className="flex flex-col divide-y divide-border-default">
@@ -109,7 +111,7 @@ export default async function SyncPage() {
                     <EventDot type={e.event_type} />
                     <span className="font-medium text-text-primary capitalize">{e.event_type}</span>
                     <span className="text-text-muted">
-                      {e.direction === "hubspot_to_local" ? "← HubSpot" : "→ HubSpot"}
+                      {e.direction === "hubspot_to_local" ? t("activity.filter.fromHubspot") : t("activity.filter.toHubspot")}
                     </span>
                   </div>
                   <span className="shrink-0 font-mono text-text-muted">

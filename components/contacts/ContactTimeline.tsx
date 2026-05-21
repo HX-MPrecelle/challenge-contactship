@@ -1,3 +1,4 @@
+import { useI18n } from "@/lib/i18n/context";
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -16,49 +17,22 @@ type SyncEvent = {
   error_message: string | null;
 };
 
-const EVENT_META: Record<
-  string,
-  { Icon: typeof Plus; label: string; iconClass: string; bgClass: string }
-> = {
-  create: {
-    Icon: Plus,
-    label: "Contacto creado",
-    iconClass: "text-success",
-    bgClass: "bg-success-subtle",
-  },
-  update: {
-    Icon: Pencil,
-    label: "Actualizado",
-    iconClass: "text-brand",
-    bgClass: "bg-brand-subtle",
-  },
-  delete: {
-    Icon: Trash2,
-    label: "Archivado",
-    iconClass: "text-text-muted",
-    bgClass: "bg-bg-subtle",
-  },
-  conflict: {
-    Icon: AlertTriangle,
-    label: "Conflicto",
-    iconClass: "text-error",
-    bgClass: "bg-error-subtle",
-  },
-  skip: {
-    Icon: SkipForward,
-    label: "Evento descartado",
-    iconClass: "text-text-muted",
-    bgClass: "bg-bg-subtle",
-  },
-};
-
 export function ContactTimeline({ events }: { events: SyncEvent[] }) {
+  const { t } = useI18n();
+
+  const EVENT_META: Record<
+    string,
+    { Icon: typeof Plus; labelKey: string; iconClass: string; bgClass: string }
+  > = {
+    create:   { Icon: Plus,          labelKey: "timeline.event.create",   iconClass: "text-success",      bgClass: "bg-success-subtle" },
+    update:   { Icon: Pencil,        labelKey: "timeline.event.update",   iconClass: "text-brand",        bgClass: "bg-brand-subtle"   },
+    delete:   { Icon: Trash2,        labelKey: "timeline.event.delete",   iconClass: "text-text-muted",   bgClass: "bg-bg-subtle"      },
+    conflict: { Icon: AlertTriangle, labelKey: "timeline.event.conflict", iconClass: "text-error",        bgClass: "bg-error-subtle"   },
+    skip:     { Icon: SkipForward,   labelKey: "timeline.event.skip",     iconClass: "text-text-muted",   bgClass: "bg-bg-subtle"      },
+  };
+
   if (events.length === 0) {
-    return (
-      <p className="text-sm text-text-muted">
-        Sin eventos de sincronización todavía.
-      </p>
-    );
+    return <p className="text-sm text-text-muted">{t("timeline.empty")}</p>;
   }
 
   return (
@@ -67,38 +41,32 @@ export function ContactTimeline({ events }: { events: SyncEvent[] }) {
         const isLast = index === events.length - 1;
         const meta = EVENT_META[event.event_type] ?? {
           Icon: Pencil,
-          label: event.event_type,
+          labelKey: "timeline.event.update",
           iconClass: "text-text-muted",
           bgClass: "bg-bg-subtle",
         };
         const DirIcon =
-          event.direction === "hubspot_to_local"
-            ? ArrowDownToLine
-            : ArrowUpFromLine;
+          event.direction === "hubspot_to_local" ? ArrowDownToLine : ArrowUpFromLine;
 
         return (
           <li key={event.id} className="flex gap-3">
-            {/* Icon column with connector line */}
             <div className="flex flex-col items-center">
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${meta.bgClass} ${meta.iconClass}`}
               >
                 <meta.Icon size={13} />
               </div>
-              {!isLast && (
-                <div className="my-1.5 w-px flex-1 bg-border-default" />
-              )}
+              {!isLast && <div className="my-1.5 w-px flex-1 bg-border-default" />}
             </div>
 
-            {/* Content */}
             <div className={`flex flex-col gap-0.5 text-sm ${!isLast ? "pb-4" : ""}`}>
               <div className="flex items-center gap-2 text-text-primary">
-                <span className="font-medium">{meta.label}</span>
+                <span className="font-medium">{t(meta.labelKey as Parameters<typeof t>[0])}</span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-bg-subtle px-1.5 py-0.5 font-mono text-xs text-text-secondary">
                   <DirIcon size={11} />
                   {event.direction === "hubspot_to_local"
-                    ? "desde HubSpot"
-                    : "hacia HubSpot"}
+                    ? t("timeline.direction.from")
+                    : t("timeline.direction.to")}
                 </span>
               </div>
               <span className="font-mono text-xs text-text-muted">
@@ -108,9 +76,7 @@ export function ContactTimeline({ events }: { events: SyncEvent[] }) {
                 })}
               </span>
               {event.error_message && (
-                <span className="mt-1 text-xs text-error">
-                  {event.error_message}
-                </span>
+                <span className="mt-1 text-xs text-error">{event.error_message}</span>
               )}
             </div>
           </li>

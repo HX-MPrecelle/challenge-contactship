@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { BackButton } from "@/components/layout/BackButton";
+import { getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,23 +21,13 @@ type Props = {
   searchParams: Promise<{ type?: string; direction?: string; page?: string }>;
 };
 
-const EVENT_META: Record<
-  string,
-  { Icon: typeof Plus; label: string; iconClass: string; bgClass: string }
-> = {
-  create:   { Icon: Plus,          label: "Creado",     iconClass: "text-success", bgClass: "bg-success-subtle" },
-  update:   { Icon: Pencil,        label: "Actualizado",iconClass: "text-brand",   bgClass: "bg-brand-subtle"   },
-  delete:   { Icon: Trash2,        label: "Archivado",  iconClass: "text-text-muted", bgClass: "bg-bg-subtle"   },
-  conflict: { Icon: AlertTriangle, label: "Conflicto",  iconClass: "text-error",   bgClass: "bg-error-subtle"   },
-  skip:     { Icon: SkipForward,   label: "Descartado", iconClass: "text-text-muted", bgClass: "bg-bg-subtle"   },
-};
-
 export default async function ActivityPage({ searchParams }: Props) {
   const { type, direction, page: pageStr } = await searchParams;
   const page = Math.max(0, parseInt(pageStr ?? "0") || 0);
   const offset = page * PAGE_SIZE;
 
   const supabase = await createClient();
+  const { t } = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -63,25 +54,36 @@ export default async function ActivityPage({ searchParams }: Props) {
   const [{ data: events }, { count: totalCount }] = await Promise.all([query, countQuery]);
   const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE));
 
+  const EVENT_META: Record<
+    string,
+    { Icon: typeof Plus; label: string; iconClass: string; bgClass: string }
+  > = {
+    create:   { Icon: Plus,          label: t("activity.event.create"),   iconClass: "text-success",   bgClass: "bg-success-subtle" },
+    update:   { Icon: Pencil,        label: t("activity.event.update"),   iconClass: "text-brand",     bgClass: "bg-brand-subtle"   },
+    delete:   { Icon: Trash2,        label: t("activity.event.delete"),   iconClass: "text-text-muted", bgClass: "bg-bg-subtle"     },
+    conflict: { Icon: AlertTriangle, label: t("activity.event.conflict"), iconClass: "text-error",     bgClass: "bg-error-subtle"   },
+    skip:     { Icon: SkipForward,   label: t("activity.event.skip"),     iconClass: "text-text-muted", bgClass: "bg-bg-subtle"     },
+  };
+
   const EVENT_TYPES = ["create", "update", "conflict", "error", "skip"];
   const DIRECTIONS = [
-    { value: "hubspot_to_local", label: "← HubSpot" },
-    { value: "local_to_hubspot", label: "→ HubSpot" },
+    { value: "hubspot_to_local", label: t("activity.filter.fromHubspot") },
+    { value: "local_to_hubspot", label: t("activity.filter.toHubspot") },
   ];
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
       <BackButton />
       <header className="pb-6">
-        <h1 className="text-2xl font-semibold text-text-primary">Activity</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">{t("activity.title")}</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Audit trail de todos los eventos de sincronización.
+          {t("activity.subtitle")}
         </p>
       </header>
 
       {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-2">
-        <FilterChip href="/activity" label="Todos" active={!type && !direction} />
+        <FilterChip href="/activity" label={t("activity.filter.all")} active={!type && !direction} />
         {EVENT_TYPES.map((t) => (
           <FilterChip
             key={t}
@@ -104,7 +106,7 @@ export default async function ActivityPage({ searchParams }: Props) {
       {/* Timeline */}
       {(events ?? []).length === 0 ? (
         <div className="rounded-xl border border-border-default bg-bg-surface px-6 py-12 text-center">
-          <p className="text-sm text-text-muted">Sin eventos que mostrar.</p>
+          <p className="text-sm text-text-muted">{t("activity.empty")}</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-border-default bg-bg-surface">
@@ -141,7 +143,7 @@ export default async function ActivityPage({ searchParams }: Props) {
                       <span className="font-medium text-text-primary">{meta.label}</span>
                       <span className="inline-flex items-center gap-1 rounded-md bg-bg-subtle px-1.5 py-0.5 font-mono text-xs text-text-secondary">
                         <DirIcon size={10} />
-                        {event.direction === "hubspot_to_local" ? "desde HubSpot" : "hacia HubSpot"}
+                        {event.direction === "hubspot_to_local" ? t("activity.direction.from") : t("activity.direction.to")}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -175,7 +177,7 @@ export default async function ActivityPage({ searchParams }: Props) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-border-default px-5 py-3">
               <span className="text-xs text-text-muted">
-                Página {page + 1} de {totalPages} · {totalCount ?? 0} eventos
+                {t("activity.pagination.info", { page: page + 1, total: totalPages, count: totalCount ?? 0 })}
               </span>
               <div className="flex items-center gap-1.5">
                 {page > 0 && (
@@ -183,7 +185,7 @@ export default async function ActivityPage({ searchParams }: Props) {
                     href={`/activity?${new URLSearchParams({ ...(type ? { type } : {}), ...(direction ? { direction } : {}), page: String(page - 1) }).toString()}`}
                     className="rounded-md border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-subtle"
                   >
-                    ← Anterior
+                    {t("activity.pagination.prev")}
                   </Link>
                 )}
                 {page < totalPages - 1 && (
@@ -191,7 +193,7 @@ export default async function ActivityPage({ searchParams }: Props) {
                     href={`/activity?${new URLSearchParams({ ...(type ? { type } : {}), ...(direction ? { direction } : {}), page: String(page + 1) }).toString()}`}
                     className="rounded-md border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-subtle"
                   >
-                    Siguiente →
+                    {t("activity.pagination.next")}
                   </Link>
                 )}
               </div>
