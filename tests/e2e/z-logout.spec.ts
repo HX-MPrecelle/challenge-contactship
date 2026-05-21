@@ -22,21 +22,27 @@ test.describe("Logout (runs last)", () => {
     await page.waitForURL(/\/login/, { timeout: 10_000 });
     await expect(page).toHaveURL(/\/login/);
 
-    // Confirm we're on the login page and no longer authenticated
+    // Confirm we're on the login page
     await expect(
       page.getByRole("heading", { name: "Bienvenido" })
     ).toBeVisible();
   });
 
-  test("accessing protected route after logout redirects to login", async ({ page }) => {
+  test("after logout, accessing protected route redirects to login", async ({ page }) => {
+    // First log out using a fresh page instance
     await page.goto("/dashboard");
     await page.waitForLoadState("load");
 
-    // Log out
-    await page.getByRole("button", { name: /cerrar sesión/i }).click();
-    await page.waitForURL(/\/login/, { timeout: 10_000 });
+    // Check if still logged in — might already be logged out from previous test
+    const logoutBtn = page.getByRole("button", { name: /cerrar sesión/i });
+    const isLoggedIn = (await logoutBtn.count()) > 0;
 
-    // Try to access a protected route
+    if (isLoggedIn) {
+      await logoutBtn.click();
+      await page.waitForURL(/\/login/, { timeout: 10_000 });
+    }
+
+    // Now try a protected route
     await page.goto("/contacts");
     await page.waitForURL(/\/login/, { timeout: 10_000 });
     await expect(page).toHaveURL(/\/login/);

@@ -42,7 +42,7 @@ export default async function ActivityPage({ searchParams }: Props) {
 
   let query = supabase
     .from("sync_events")
-    .select("id, event_type, direction, created_at, error_message, contact_id, contacts(first_name, last_name, email)")
+    .select("id, event_type, direction, created_at, error_message, contact_id")
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -105,11 +105,8 @@ export default async function ActivityPage({ searchParams }: Props) {
                 iconClass: "text-text-muted",
                 bgClass: "bg-bg-subtle",
               };
-              const contact = Array.isArray(event.contacts)
-                ? event.contacts[0]
-                : event.contacts;
-              const contactName = contact
-                ? [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.email || "—"
+              const contactName = event.contact_id
+                ? event.contact_id.slice(0, 8) + "…"
                 : "—";
               const DirIcon =
                 event.direction === "hubspot_to_local"

@@ -36,14 +36,16 @@ test.describe("Contact list", () => {
   });
 
   test("AI search button is present", async ({ page }) => {
-    const btn = page.getByRole("button", { name: /ai search/i });
+    // Button has aria-label="Interpretar como búsqueda en lenguaje natural"
+    // so we match by text content, not accessible name
+    const btn = page.getByRole("button").filter({ hasText: "AI search" });
     await expect(btn).toBeVisible();
   });
 
   test("AI search shows result banner", async ({ page }) => {
     const input = page.getByPlaceholder(/buscar/i);
     await input.fill("contactos en Argentina");
-    await page.getByRole("button", { name: /ai search/i }).click();
+    await page.getByRole("button").filter({ hasText: "AI search" }).click();
 
     // Either shows the AI banner (success) or stays in text-filter mode
     // depending on whether OpenAI is configured
@@ -110,12 +112,11 @@ test.describe("Contact list", () => {
 test.describe("Contact list — status filter from URL", () => {
   test("?status=conflict filters to conflict contacts", async ({ page }) => {
     await goto(page, "/contacts?status=conflict");
-    // Either shows the filter banner or an empty state
+    // The filter chip "Ver todos" only appears when a filter is active.
+    // Use that as a reliable marker instead of matching text across nested spans.
     await expect(
-      page
-        .getByText(/contactos en conflicto/i)
-        .or(page.getByText(/sin contactos/i))
-        .or(page.getByText(/ningún contacto/i))
+      page.getByRole("button", { name: /ver todos/i })
+        .or(page.getByText(/ningún contacto coincide/i).first())
     ).toBeVisible({ timeout: 5_000 });
   });
 });

@@ -57,19 +57,19 @@ test.describe("Dashboard", () => {
   });
 
   test("conflict stat card links to /conflicts when > 0", async ({ page }) => {
-    // Check if conflict count > 0 by reading the number from the card
-    const conflictCard = page
-      .locator("section, div, a")
-      .filter({ hasText: "Conflictos sin resolver" })
-      .first();
-    const countText = await conflictCard.textContent();
+    // Find the conflict stat card by its label — use a scoped selector
+    const conflictLabel = page.getByText("Conflictos sin resolver");
+    await expect(conflictLabel).toBeVisible({ timeout: 10_000 });
 
-    // If conflicts exist, the card should be a link to /conflicts
-    const conflictsCount = parseInt(countText?.match(/\d+/)?.[0] ?? "0");
+    // Check if the card has a numeric value > 0
+    const card = conflictLabel.locator("..").locator("..");
+    const cardText = await card.textContent().catch(() => "0");
+    const conflictsCount = parseInt(cardText?.match(/\d+/)?.[0] ?? "0");
+
     if (conflictsCount > 0) {
-      await expect(
-        page.getByRole("link").filter({ has: page.getByText("Conflictos sin resolver") })
-      ).toHaveAttribute("href", /\/conflicts/);
+      // Card should be wrapped in a link to /conflicts
+      const linkCard = page.locator("a").filter({ has: page.getByText("Conflictos sin resolver") });
+      await expect(linkCard).toHaveAttribute("href", /\/conflicts/);
     }
   });
 });

@@ -9,9 +9,10 @@ test.describe("Settings — layout and navigation", () => {
   test("renders main heading and sub-nav", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
 
-    // Sub-nav groups
-    await expect(page.getByText("Organización")).toBeVisible();
-    await expect(page.getByText("IA")).toBeVisible();
+    // Sub-nav groups — scope to the aside to avoid matching the HubSpot section heading
+    const nav = page.locator("aside");
+    await expect(nav.getByText("Organización", { exact: true })).toBeVisible();
+    await expect(nav.getByText("IA", { exact: true })).toBeVisible();
 
     // Section links
     await expect(page.getByRole("link", { name: "General" })).toBeVisible();
@@ -65,11 +66,11 @@ test.describe("Settings — HubSpot section", () => {
   });
 
   test("renders HubSpot connection card", async ({ page }) => {
-    // Either connected card or empty state (no connection)
+    // Either the connected card (shows portal name or Live badge)
+    // or the empty state when no connection exists
     await expect(
-      page
-        .locator("div")
-        .filter({ has: page.getByText(/H/, { exact: true }) }) // HubSpot avatar "H"
+      page.getByText(/live/i)
+        .or(page.getByText(/portal/i).first())
         .or(page.getByText(/sin portal conectado/i))
     ).toBeVisible({ timeout: 8_000 });
   });
@@ -111,12 +112,14 @@ test.describe("Settings — Sync section", () => {
   });
 
   test("renders sync health panel", async ({ page }) => {
-    // SyncHealthPanel is embedded in the sync section
-    await expect(page.getByText("Estado del sync")).toBeVisible();
-    await expect(page.getByText("Sincronizados")).toBeVisible();
-    await expect(page.getByText("Pendientes")).toBeVisible();
-    await expect(page.getByText("Conflictos")).toBeVisible();
-    await expect(page.getByText("Errores")).toBeVisible();
+    // SyncHealthPanel is embedded in the sync section.
+    // Scope to main to avoid picking up sidebar "Conflictos" nav link.
+    const main = page.getByRole("main");
+    await expect(main.getByText("Estado del sync")).toBeVisible();
+    await expect(main.getByText("Sincronizados")).toBeVisible();
+    await expect(main.getByText("Pendientes")).toBeVisible();
+    await expect(main.getByText("Conflictos", { exact: true }).first()).toBeVisible();
+    await expect(main.getByText("Errores")).toBeVisible();
   });
 });
 

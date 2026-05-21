@@ -10,11 +10,10 @@ import { goto } from "./helpers";
 
 async function openFirstContact(page: Page): Promise<string | null> {
   await goto(page, "/contacts");
-  await page.waitForLoadState("load");
   const link = page.getByRole("table").getByRole("link").first();
   if ((await link.count()) === 0) return null;
   await link.click();
-  await page.waitForLoadState("load");
+  await page.waitForURL(/\/contacts\/[a-f0-9-]+$/, { timeout: 10_000 });
   return page.url();
 }
 

@@ -29,10 +29,12 @@ test.describe("Sync Health page (/sync)", () => {
   });
 
   test("SyncHealthPanel shows 4 stat tiles", async ({ page }) => {
-    await expect(page.getByText("Sincronizados")).toBeVisible();
-    await expect(page.getByText("Pendientes")).toBeVisible();
-    await expect(page.getByText("Conflictos")).toBeVisible();
-    await expect(page.getByText("Errores")).toBeVisible();
+    // Scope to main — sidebar also has a "Conflictos" nav link
+    const main = page.getByRole("main");
+    await expect(main.getByText("Sincronizados")).toBeVisible();
+    await expect(main.getByText("Pendientes")).toBeVisible();
+    await expect(main.getByText("Conflictos", { exact: true }).first()).toBeVisible();
+    await expect(main.getByText("Errores")).toBeVisible();
   });
 
   test("recent activity section is present with link to /activity", async ({ page }) => {

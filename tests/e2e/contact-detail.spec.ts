@@ -7,7 +7,9 @@ async function openFirstContact(page: Page): Promise<string | null> {
   const link = page.getByRole("table").getByRole("link").first();
   if ((await link.count()) === 0) return null;
   await link.click();
-  await page.waitForLoadState("load");
+  // Next.js Link uses history.pushState — waitForLoadState("load") fires
+  // immediately (already loaded). We must wait for the URL to actually change.
+  await page.waitForURL(/\/contacts\/[a-f0-9-]+$/, { timeout: 10_000 });
   return page.url();
 }
 
