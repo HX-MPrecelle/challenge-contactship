@@ -20,7 +20,7 @@ test.describe("Login page", () => {
     // Form panel (right)
     await expect(page.getByRole("heading", { name: "Bienvenido" })).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Contraseña")).toBeVisible();
+    await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByRole("button", { name: /iniciar sesión/i })).toBeVisible();
   });
 
@@ -30,7 +30,7 @@ test.describe("Login page", () => {
 
     // Should show signup form with confirm password
     await expect(page.getByRole("button", { name: /crear cuenta/i })).toBeVisible();
-    await expect(page.getByLabel("Confirmar contraseña")).toBeVisible();
+    await expect(page.locator("#confirmPassword")).toBeVisible();
 
     // Toggle back
     await page.getByRole("button", { name: "Iniciar sesión" }).click();
@@ -38,7 +38,7 @@ test.describe("Login page", () => {
   });
 
   test("shows error for empty email", async ({ page }) => {
-    await page.getByLabel("Contraseña").fill("somepassword");
+    await page.locator("#password").fill("somepassword");
     await page.getByRole("button", { name: /iniciar sesión/i }).click();
     // HTML5 validation should prevent submission
     await expect(page).toHaveURL(/\/login/);
@@ -46,7 +46,7 @@ test.describe("Login page", () => {
 
   test("shows error for wrong credentials", async ({ page }) => {
     await page.getByLabel("Email").fill("nobody@nowhere.xyz");
-    await page.getByLabel("Contraseña").fill("wrongpassword");
+    await page.locator("#password").fill("wrongpassword");
     await page.getByRole("button", { name: /iniciar sesión/i }).click();
 
     // Should stay on login page and show an error message

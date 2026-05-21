@@ -22,7 +22,7 @@ setup("authenticate", async ({ page }) => {
   await expect(page.getByLabel("Email")).toBeVisible();
 
   await page.getByLabel("Email").fill(EMAIL);
-  await page.getByLabel("Contraseña").fill(PASSWORD);
+  await page.locator("#password").fill(PASSWORD);
   await page.getByRole("button", { name: /iniciar sesión/i }).click();
 
   // After login, Supabase sets auth cookies and redirects to /dashboard
