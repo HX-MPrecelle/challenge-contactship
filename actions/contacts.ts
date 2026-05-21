@@ -12,6 +12,7 @@ import {
 } from "@/lib/hubspot/sync";
 import { embedContacts } from "@/lib/ai/embeddings";
 import { HubSpotAuthError, HubSpotRateLimitError } from "@/lib/errors";
+import { after } from "next/server";
 
 const UpdateContactSchema = z.object({
   id: z.string().uuid(),
@@ -75,15 +76,29 @@ export async function updateContact(
     }
 
     const admin = createServiceClient();
-    const text = buildContactText(normalizeHubSpotContact(fresh));
-    const embeddings = await embedContacts([{ key: fresh.id, text }]);
+    const normalized = normalizeHubSpotContact(fresh);
+    const text = buildContactText(normalized);
+
+    // Upsert immediately without embedding so the UI reflects the new data now.
     await upsertContactFromHubSpot(admin, orgId, fresh, {
-      embedding: embeddings?.[0]?.embedding,
+      embedding: null,
       direction: "local_to_hubspot",
     });
 
     revalidatePath(`/contacts/${parsed.data.id}`);
     revalidatePath("/contacts");
+
+    // Regenerate embedding in background — doesn't block the save response.
+    after(async () => {
+      const embeddings = await embedContacts([{ key: fresh.id, text }]);
+      if (embeddings?.[0]) {
+        await admin
+          .from("contacts")
+          .update({ embedding: embeddings[0].embedding as unknown as string })
+          .eq("id", parsed.data.id)
+          .eq("org_id", orgId);
+      }
+    });
 
     return { success: true, data: { id: parsed.data.id } };
   } catch (err) {

@@ -2,12 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { listContactsPage } from "@/lib/hubspot/contacts";
-import {
-  buildContactText,
-  normalizeHubSpotContact,
-  upsertContactFromHubSpot,
-} from "@/lib/hubspot/sync";
-import { embedContacts } from "@/lib/ai/embeddings";
+import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
+import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { HubSpotAuthError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -80,20 +76,11 @@ export async function GET(request: NextRequest) {
           );
         });
 
-        const embedInputs = candidates.map((c) => {
-          const normalized = normalizeHubSpotContact(c);
-          return { key: c.id, text: buildContactText(normalized) };
-        });
-        const embeddings = await embedContacts(embedInputs);
-        const byKey = new Map<string, number[]>();
-        if (embeddings) {
-          for (const r of embeddings) byKey.set(r.key, r.embedding);
-        }
-
         for (const contact of candidates) {
           try {
+            // Upsert without embedding — backfill runs at end of cron pass.
             await upsertContactFromHubSpot(admin, connection.org_id, contact, {
-              embedding: byKey.get(contact.id) ?? null,
+              embedding: null,
             });
             processed++;
           } catch (err) {
@@ -111,6 +98,12 @@ export async function GET(request: NextRequest) {
         .from("hubspot_connections")
         .update({ last_synced_at: new Date().toISOString() })
         .eq("org_id", connection.org_id);
+
+      // Backfill any missing embeddings for this org after the sync pass.
+      const { filled } = await backfillMissingEmbeddings(admin, connection.org_id);
+      if (filled > 0) {
+        console.log(`[cron sync] embedded ${filled} contacts for org ${connection.org_id}`);
+      }
 
       report.push({ orgId: connection.org_id, processed });
     } catch (err) {

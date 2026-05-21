@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { getContact } from "@/lib/hubspot/contacts";
@@ -137,11 +137,25 @@ async function processSingleEvent(
 
     const normalized = normalizeHubSpotContact(contact);
     const text = buildContactText(normalized);
-    const embeddings = await embedContacts([{ key: hubspotId, text }]);
 
-    await upsertContactFromHubSpot(admin, orgId, contact, {
-      embedding: embeddings?.[0]?.embedding,
+    // Upsert immediately so the local mirror is up to date.
+    const result = await upsertContactFromHubSpot(admin, orgId, contact, {
+      embedding: null,
     });
+
+    // Regenerate embedding after responding — keeps webhook processing fast.
+    after(async () => {
+      const embeddings = await embedContacts([{ key: hubspotId, text }]);
+      if (embeddings?.[0]) {
+        await admin
+          .from("contacts")
+          .update({ embedding: embeddings[0].embedding as unknown as string })
+          .eq("hubspot_id", hubspotId)
+          .eq("org_id", orgId);
+      }
+    });
+
+    void result;
     return;
   }
 }

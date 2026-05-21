@@ -5,13 +5,10 @@ import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { countContacts, listContactsPage } from "@/lib/hubspot/contacts";
-import {
-  buildContactText,
-  normalizeHubSpotContact,
-  upsertContactFromHubSpot,
-} from "@/lib/hubspot/sync";
-import { embedContacts } from "@/lib/ai/embeddings";
+import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
+import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { HubSpotAuthError } from "@/lib/errors";
+import { after } from "next/server";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
@@ -218,25 +215,13 @@ export async function importContacts(
       });
       console.log(`[importContacts] page ${pageIdx} got ${page.results.length} contacts`);
 
-      const embedInputs = page.results.map((c) => {
-        const normalized = normalizeHubSpotContact(c);
-        return { key: c.id, text: buildContactText(normalized) };
-      });
-      const embedStart = Date.now();
-      const embeddings = await embedContacts(embedInputs);
-      console.log(
-        `[importContacts] embedded ${embedInputs.length} (${Date.now() - embedStart}ms${embeddings ? "" : ", skipped"})`
-      );
-      const byKey = new Map<string, number[]>();
-      if (embeddings) {
-        for (const r of embeddings) byKey.set(r.key, r.embedding);
-      }
-
       const upsertStart = Date.now();
       for (const contact of page.results) {
         try {
+          // Upsert without embedding — embeddings generated in background
+          // after the import completes so they don't block the sync loop.
           const outcome = await upsertContactFromHubSpot(admin, orgId, contact, {
-            embedding: byKey.get(contact.id) ?? null,
+            embedding: null,
           });
           if (outcome.type === "conflict") conflicts++;
         } catch (err) {
@@ -262,6 +247,15 @@ export async function importContacts(
     if (channelOpen) await admin.removeChannel(channel);
 
     revalidatePath("/contacts");
+
+    // Generate embeddings in background after the response is sent.
+    // This keeps the import fast (no OpenAI calls blocking the sync loop).
+    after(async () => {
+      const { filled } = await backfillMissingEmbeddings(admin, orgId);
+      if (filled > 0) {
+        console.log(`[importContacts:after] embedded ${filled} contacts`);
+      }
+    });
 
     console.log(`[importContacts] done — processed=${processed} conflicts=${conflicts}`);
     return { success: true, data: { imported: processed, conflicts } };
