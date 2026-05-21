@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { Toaster } from "@/components/ui/sonner";
-import { I18nProvider } from "@/lib/i18n/context";
+import { Providers } from "@/app/providers";
 import {
   LOCALE_COOKIE,
   DEFAULT_LOCALE,
@@ -45,10 +45,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <I18nProvider locale={locale}>
+        <Providers locale={locale}>
           {children}
           <Toaster richColors closeButton position="bottom-right" />
-        </I18nProvider>
+        </Providers>
       </body>
     </html>
   );

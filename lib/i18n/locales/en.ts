@@ -254,6 +254,20 @@ export const en: Record<TranslationKey, string> = {
   "language.es": "Español",
   "language.en": "English",
 
+  // ── Preferences section ──────────────────────────────────────────────────────
+  "nav.settings.preferences": "Preferences",
+  "settings.preferences.title": "Interface preferences",
+  "settings.preferences.desc": "Language, appearance and workspace behavior.",
+  "settings.theme.label": "Appearance",
+  "settings.theme.desc": "How the interface is rendered. 'System' follows your OS setting.",
+  "settings.theme.light": "Light",
+  "settings.theme.dark": "Dark",
+  "settings.theme.system": "System",
+  "settings.density.label": "Table density",
+  "settings.density.desc": "Controls the row spacing in the contacts table.",
+  "settings.density.normal": "Normal",
+  "settings.density.compact": "Compact",
+
   // ── SyncStatusBadge ─────────────────────────────────────────────────────────
   "status.synced": "synced",
   "status.pending": "pending",

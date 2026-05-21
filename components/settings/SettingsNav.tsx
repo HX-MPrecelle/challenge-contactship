@@ -1,37 +1,41 @@
 "use client";
 
 import Link from "next/link";
-
-interface NavSection {
-  id: string;
-  label: string;
-}
-
-interface NavGroup {
-  title: string;
-  sections: NavSection[];
-}
-
-const GROUPS: NavGroup[] = [
-  {
-    title: "Organización",
-    sections: [
-      { id: "general", label: "General" },
-      { id: "hubspot", label: "HubSpot" },
-      { id: "sync", label: "Sincronización" },
-    ],
-  },
-  {
-    title: "IA",
-    sections: [
-      { id: "ai", label: "Modelos y comportamiento" },
-    ],
-  },
-];
+import { useI18n } from "@/lib/i18n/context";
 
 export function SettingsNav({ activeSection }: { activeSection: string }) {
+  const { t } = useI18n();
+
+  // Group title labels differ by locale
+  const orgTitle    = t("settings.general.title");        // "Organización" / "Organization"
+  const aiTitle     = "IA";                               // same in both languages
+  const ifaceTitle  = t("nav.settings.preferences");      // "Preferencias" / "Preferences"
+
+  const GROUPS = [
+    {
+      title: orgTitle,
+      sections: [
+        { id: "general",     label: t("nav.settings.general") },
+        { id: "hubspot",     label: t("nav.settings.hubspot") },
+        { id: "sync",        label: t("nav.settings.sync") },
+      ],
+    },
+    {
+      title: aiTitle,
+      sections: [
+        { id: "ai",          label: t("nav.settings.ai") },
+      ],
+    },
+    {
+      title: ifaceTitle,
+      sections: [
+        { id: "preferences", label: t("nav.settings.preferences") },
+      ],
+    },
+  ];
+
   return (
-    <aside className="flex w-[220px] shrink-0 flex-col gap-5 pr-6">
+    <aside className="flex w-[200px] shrink-0 flex-col gap-5 pr-6">
       {GROUPS.map((group) => (
         <div key={group.title} className="flex flex-col gap-0.5">
           <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-text-muted">

@@ -252,6 +252,20 @@ export const es = {
   "language.es": "Español",
   "language.en": "English",
 
+  // ── Preferences section ──────────────────────────────────────────────────────
+  "nav.settings.preferences": "Preferencias",
+  "settings.preferences.title": "Preferencias de interfaz",
+  "settings.preferences.desc": "Idioma, apariencia y comportamiento del workspace.",
+  "settings.theme.label": "Apariencia",
+  "settings.theme.desc": "Cómo se renderiza la interfaz. 'Sistema' sigue tu configuración del SO.",
+  "settings.theme.light": "Claro",
+  "settings.theme.dark": "Oscuro",
+  "settings.theme.system": "Sistema",
+  "settings.density.label": "Densidad de la tabla",
+  "settings.density.desc": "Controla el espacio entre filas en la tabla de contactos.",
+  "settings.density.normal": "Normal",
+  "settings.density.compact": "Compacta",
+
   // ── SyncStatusBadge ─────────────────────────────────────────────────────────
   "status.synced": "synced",
   "status.pending": "pending",

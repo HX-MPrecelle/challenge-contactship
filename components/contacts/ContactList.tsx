@@ -48,6 +48,7 @@ type Props = {
   initialContacts: ContactRow[];
   orgId: string;
   initialStatusFilter?: SyncStatus | null;
+  density?: "normal" | "compact";
 };
 
 const LIFECYCLE_FILTER_VALUES = [
@@ -65,8 +66,10 @@ export function ContactList({
   initialContacts,
   orgId,
   initialStatusFilter,
+  density = "normal",
 }: Props) {
   const { t } = useI18n();
+  const rowPy = density === "compact" ? "py-1.5" : "py-3";
 
   // Build translated filter arrays inside the component so they react to locale changes
   const STATUS_LABEL: Record<SyncStatus, string> = {
@@ -460,7 +463,7 @@ export function ContactList({
                   key={c.id}
                   className={`transition-colors hover:bg-bg-subtle ${selected.has(c.id) ? "bg-brand-subtle/30" : ""}`}
                 >
-                  <td className="w-10 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <td className={`w-10 px-4 ${rowPy}`} onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 rounded border-border-strong accent-brand"
@@ -469,7 +472,7 @@ export function ContactList({
                       onClick={(e) => toggleRow(c.id, e)}
                     />
                   </td>
-                  <td className="max-w-[180px] px-4 py-3">
+                  <td className={`max-w-[180px] px-4 ${rowPy}`}>
                     <Link
                       href={`/contacts/${c.id}`}
                       className="flex min-w-0 items-center gap-2.5 text-text-primary"
@@ -482,27 +485,27 @@ export function ContactList({
                       <span className="truncate font-medium" title={fullName}>{fullName}</span>
                     </Link>
                   </td>
-                  <td className="max-w-[160px] px-4 py-3">
+                  <td className={`max-w-[160px] px-4 ${rowPy}`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate font-mono text-xs text-text-muted" title={c.email ?? ""}>
                       {c.email ?? "—"}
                     </Link>
                   </td>
-                  <td className="max-w-[140px] px-4 py-3 text-text-secondary">
+                  <td className={`max-w-[140px] px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate" title={c.company ?? ""}>
                       {c.company ?? "—"}
                     </Link>
                   </td>
-                  <td className="max-w-[140px] px-4 py-3 text-text-secondary">
+                  <td className={`max-w-[140px] px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate" title={c.job_title ?? ""}>
                       {c.job_title ?? "—"}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-text-secondary">
+                  <td className={`px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate">
                       {c.lifecycle_stage ?? "—"}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={`px-4 ${rowPy}`}>
                     <Link href={`/contacts/${c.id}`}>
                       <SyncStatusBadge status={c.sync_status} />
                     </Link>

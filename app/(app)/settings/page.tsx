@@ -16,6 +16,11 @@ import { createClient } from "@/lib/supabase/server";
 import { OrgNameForm } from "./OrgNameForm";
 import { HubSpotActions } from "./HubSpotActions";
 import { getServerT } from "@/lib/i18n/server";
+import { ThemeSelector } from "@/components/settings/ThemeSelector";
+import { LanguageSelector } from "@/components/settings/LanguageSelector";
+import { DensitySelector } from "@/components/settings/DensitySelector";
+import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/actions/preferences";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +30,9 @@ type Props = {
 
 export default async function SettingsPage({ searchParams }: Props) {
   const { section = "general" } = await searchParams;
+
+  const cookieStore = await cookies();
+  const density = getDensityFromCookieValue(cookieStore.get(DENSITY_COOKIE)?.value);
 
   const supabase = await createClient();
   const { t } = await getServerT();
@@ -264,6 +272,33 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <span className="font-mono text-xs text-text-muted">
                   text-embedding-3-small · OpenAI
                 </span>
+              </SettingsRow>
+            </SettingsSection>
+          )}
+
+          {/* ── Preferences ── */}
+          {section === "preferences" && (
+            <SettingsSection
+              title={t("settings.preferences.title")}
+              description={t("settings.preferences.desc")}
+            >
+              <SettingsRow
+                title={t("language.label")}
+                description={t("settings.preferences.desc").split(".")[0] + "."}
+              >
+                <LanguageSelector />
+              </SettingsRow>
+              <SettingsRow
+                title={t("settings.theme.label")}
+                description={t("settings.theme.desc")}
+              >
+                <ThemeSelector />
+              </SettingsRow>
+              <SettingsRow
+                title={t("settings.density.label")}
+                description={t("settings.density.desc")}
+              >
+                <DensitySelector current={density} />
               </SettingsRow>
             </SettingsSection>
           )}

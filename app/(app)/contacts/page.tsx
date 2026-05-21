@@ -4,6 +4,7 @@ import { Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
 import { HubSpotSyncButton } from "./HubSpotSyncButton";
+import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/actions/preferences";
 import {
   createT,
   LOCALE_COOKIE,
@@ -47,6 +48,7 @@ export default async function ContactsPage({ searchParams }: Props) {
   const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value as Locale | undefined;
   const locale: Locale = rawLocale && SUPPORTED_LOCALES.includes(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const t = createT(locale);
+  const density = getDensityFromCookieValue(cookieStore.get(DENSITY_COOKIE)?.value);
 
   const { data: contacts, error } = await supabase
     .from("contacts")
@@ -85,6 +87,7 @@ export default async function ContactsPage({ searchParams }: Props) {
         initialContacts={contacts ?? []}
         orgId={orgId}
         initialStatusFilter={initialStatusFilter}
+        density={density}
       />
     </main>
   );

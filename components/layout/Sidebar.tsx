@@ -14,7 +14,6 @@ import {
   Users,
 } from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { createT, type Locale } from "@/lib/i18n/index";
 
 type Props = {
@@ -38,10 +37,11 @@ export function Sidebar({ userEmail, locale }: Props) {
   ] as const;
 
   const SETTINGS_SECTIONS = [
-    { id: "general", label: t("nav.settings.general") },
-    { id: "hubspot", label: t("nav.settings.hubspot") },
-    { id: "sync", label: t("nav.settings.sync") },
-    { id: "ai", label: t("nav.settings.ai") },
+    { id: "general",      label: t("nav.settings.general") },
+    { id: "hubspot",      label: t("nav.settings.hubspot") },
+    { id: "sync",         label: t("nav.settings.sync") },
+    { id: "ai",           label: t("nav.settings.ai") },
+    { id: "preferences",  label: t("nav.settings.preferences") },
   ] as const;
 
   return (
@@ -119,9 +119,6 @@ export function Sidebar({ userEmail, locale }: Props) {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border-default pt-3">
-        {/* Language switcher */}
-        <LanguageSwitcher />
-
         <div className="px-2 pb-1 text-xs text-text-muted">{userEmail}</div>
         <form action={signOut}>
           <button
