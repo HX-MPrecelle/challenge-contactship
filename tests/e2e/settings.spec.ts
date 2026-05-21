@@ -66,12 +66,13 @@ test.describe("Settings — HubSpot section", () => {
   });
 
   test("renders HubSpot connection card", async ({ page }) => {
-    // Either the connected card (shows portal name or Live badge)
-    // or the empty state when no connection exists
+    // Either the Live badge (exact span text) or the empty state.
+    // Avoid /live/i + /portal/i chains since both match when connected
+    // ("Live" badge AND "Portal XXXX" mono text are both visible).
     await expect(
-      page.getByText(/live/i)
-        .or(page.getByText(/portal/i).first())
-        .or(page.getByText(/sin portal conectado/i))
+      page.getByText("Live", { exact: true })
+        .or(page.getByText("sin portal conectado", { exact: false }))
+        .first()
     ).toBeVisible({ timeout: 8_000 });
   });
 

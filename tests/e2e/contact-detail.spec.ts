@@ -146,10 +146,11 @@ test.describe("Contact detail — Email draft dialog", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText("Borrador de email con IA")).toBeVisible();
 
-    // Tone picker
-    await expect(page.getByText("Cálido")).toBeVisible();
-    await expect(page.getByText("Conciso")).toBeVisible();
-    await expect(page.getByText("Directo")).toBeVisible();
+    // Tone picker — scope to dialog to avoid matching "Director" in contact metadata
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("Cálido", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Conciso", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Directo", { exact: true })).toBeVisible();
 
     // Close dialog
     await page.keyboard.press("Escape");

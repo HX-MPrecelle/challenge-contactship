@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { goto } from "./helpers";
 
+
 test.describe("Conflicts inbox", () => {
   test.beforeEach(async ({ page }) => {
     await goto(page, "/conflicts");
@@ -21,27 +22,30 @@ test.describe("Conflicts inbox", () => {
   });
 
   test("shows empty state or inbox after load", async ({ page }) => {
-    // Scope to main so we don't catch sidebar "Conflictos" link
     const main = page.getByRole("main");
+    // Use getByRole("heading") to avoid matching the description paragraph
+    // "No hay conflictos pendientes de resolver." which also contains "Conflictos pendientes"
+    // via Playwright's default case-insensitive substring matching.
     await expect(
-      main.getByText("Todo en sync").or(main.getByText("Conflictos pendientes"))
+      main.getByText("Todo en sync", { exact: true })
+        .or(main.getByRole("heading", { name: /conflictos pendientes/i }))
     ).toBeVisible({ timeout: 8_000 });
   });
 
   test("inbox shows two-panel layout when conflicts exist", async ({ page }) => {
     const main = page.getByRole("main");
     const hasConflicts =
-      (await main.getByText("Conflictos pendientes").count()) > 0;
+      (await main.getByRole("heading", { name: /conflictos pendientes/i }).count()) > 0;
     test.skip(!hasConflicts, "No conflicts in this org");
 
-    await expect(main.getByText("Conflictos pendientes")).toBeVisible();
+    await expect(main.getByRole("heading", { name: /conflictos pendientes/i })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
   });
 
   test("selecting a conflict item shows its detail", async ({ page }) => {
     const main = page.getByRole("main");
     const hasConflicts =
-      (await main.getByText("Conflictos pendientes").count()) > 0;
+      (await main.getByRole("heading", { name: /conflictos pendientes/i }).count()) > 0;
     test.skip(!hasConflicts, "No conflicts in this org");
 
     await expect(page.getByText(/campo/i).first()).toBeVisible({ timeout: 10_000 });
@@ -50,7 +54,7 @@ test.describe("Conflicts inbox", () => {
   test("conflict detail has resolution actions", async ({ page }) => {
     const main = page.getByRole("main");
     const hasConflicts =
-      (await main.getByText("Conflictos pendientes").count()) > 0;
+      (await main.getByRole("heading", { name: /conflictos pendientes/i }).count()) > 0;
     test.skip(!hasConflicts, "No conflicts in this org");
 
     await expect(page.getByRole("button", { name: /posponer/i })).toBeVisible({ timeout: 8_000 });
@@ -60,17 +64,17 @@ test.describe("Conflicts inbox", () => {
   test("bulk resolution buttons (todo local / todo hubspot) appear", async ({ page }) => {
     const main = page.getByRole("main");
     const hasConflicts =
-      (await main.getByText("Conflictos pendientes").count()) > 0;
+      (await main.getByRole("heading", { name: /conflictos pendientes/i }).count()) > 0;
     test.skip(!hasConflicts, "No conflicts in this org");
 
-    await expect(page.getByText("Todo local")).toBeVisible({ timeout: 8_000 });
-    await expect(page.getByText("Todo HubSpot")).toBeVisible();
+    await expect(page.getByText("Todo local", { exact: true })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText("Todo HubSpot", { exact: true })).toBeVisible();
   });
 
   test("realtime badge count is visible in list header", async ({ page }) => {
     const main = page.getByRole("main");
     const hasConflicts =
-      (await main.getByText("Conflictos pendientes").count()) > 0;
+      (await main.getByRole("heading", { name: /conflictos pendientes/i }).count()) > 0;
     test.skip(!hasConflicts, "No conflicts in this org");
 
     const badge = page.locator("span.animate-pulse-dot");
@@ -85,7 +89,6 @@ test.describe("Conflict diff dialog (from contact detail)", () => {
     test.skip((await firstConflictLink.count()) === 0, "No conflict contacts");
 
     await firstConflictLink.click();
-    // Wait for client-side navigation to the contact detail
     await page.waitForURL(/\/contacts\/[a-f0-9-]+$/, { timeout: 10_000 });
 
     const resolveBtn = page.getByRole("button", { name: /resolver con diff/i });
@@ -95,8 +98,8 @@ test.describe("Conflict diff dialog (from contact detail)", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(page.getByText("Resolver conflicto")).toBeVisible();
 
-    await expect(page.getByText("Local (vos)")).toBeVisible();
-    await expect(page.getByText("HubSpot")).toBeVisible();
+    await expect(page.getByText("Local (vos)", { exact: true })).toBeVisible();
+    await expect(page.getByText("Todo local", { exact: true })).toBeVisible();
 
     await expect(page.getByRole("button", { name: /guardar merge/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /cancelar/i })).toBeVisible();

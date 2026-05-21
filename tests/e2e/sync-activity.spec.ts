@@ -73,24 +73,15 @@ test.describe("Activity feed (/activity)", () => {
   });
 
   test("filter chips are present", async ({ page }) => {
-    await expect(page.getByRole("link", { name: "Todos" })).toBeVisible();
-    // Event type filters
-    await expect(
-      page.getByRole("link", { name: /creado/i })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /actualizado/i })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /conflicto/i })
-    ).toBeVisible();
-    // Direction filters
-    await expect(
-      page.getByRole("link", { name: /← hubspot/i })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: /→ hubspot/i })
-    ).toBeVisible();
+    // Scope to main to avoid matching sidebar nav links (e.g. "Conflictos" nav)
+    const main = page.getByRole("main");
+    await expect(main.getByRole("link", { name: "Todos", exact: true })).toBeVisible();
+    await expect(main.getByRole("link", { name: /creado/i })).toBeVisible();
+    await expect(main.getByRole("link", { name: /actualizado/i })).toBeVisible();
+    // "Conflicto" filter chip — exact to avoid matching sidebar "Conflictos" nav
+    await expect(main.getByRole("link", { name: "Conflicto", exact: true })).toBeVisible();
+    await expect(main.getByRole("link", { name: /← hubspot/i })).toBeVisible();
+    await expect(main.getByRole("link", { name: /→ hubspot/i })).toBeVisible();
   });
 
   test("filter chip navigates with query param", async ({ page }) => {

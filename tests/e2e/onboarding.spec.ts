@@ -81,11 +81,13 @@ test.describe("404 and error pages", () => {
   test("unauthenticated user accessing home sees landing or login", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("load");
-    // Should show the landing page or redirect to login — never a blank page
+    // Should show the landing page or redirect to login — never a blank page.
+    // Use .first() to handle the case where multiple elements match the .or() chain.
     await expect(
       page.getByRole("link", { name: /iniciar sesión/i })
         .or(page.getByRole("heading", { name: /bienvenido/i }))
-        .or(page.getByText(/contactship/i).first())
+        .or(page.getByRole("heading", { name: /contactship/i }))
+        .first()
     ).toBeVisible({ timeout: 8_000 });
   });
 });
