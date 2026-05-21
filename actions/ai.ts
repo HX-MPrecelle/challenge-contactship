@@ -51,6 +51,7 @@ const prioritiesCache = new Map<
 const InsightsInputSchema = z.object({
   contactId: z.string().uuid(),
   forceRefresh: z.boolean().optional(),
+  locale: z.enum(["es", "en"]).optional(),
 });
 
 export async function generateInsightsAction(
@@ -119,7 +120,7 @@ export async function generateInsightsAction(
   };
   const text = buildContactText(normalizeHubSpotContact(fakeHubSpot));
 
-  const result = await getOrGenerateInsights(admin, orgId, contact.id, text);
+  const result = await getOrGenerateInsights(admin, orgId, contact.id, text, parsed.data.locale ?? "es");
   if ("error" in result) {
     return { success: false, error: result.error, code: "AI_ERROR" };
   }

@@ -1,15 +1,33 @@
 import { updateSession } from "@/lib/supabase/middleware";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  LOCALE_COOKIE,
+  SUPPORTED_LOCALES,
+  DEFAULT_LOCALE,
+  parseAcceptLanguage,
+  type Locale,
+} from "@/lib/i18n/index";
 
 export async function middleware(request: NextRequest) {
-  return updateSession(request);
+  const response = await updateSession(request);
+
+  const existing = request.cookies.get(LOCALE_COOKIE)?.value as Locale | undefined;
+  if (!existing || !SUPPORTED_LOCALES.includes(existing)) {
+    const detected = parseAcceptLanguage(request.headers.get("accept-language"));
+    const res = response ?? NextResponse.next();
+    res.cookies.set(LOCALE_COOKIE, detected || DEFAULT_LOCALE, {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return res;
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: [
-    // Match every path except Next internals, image optimizer, and static assets.
-    // Webhook endpoints go through here too — they're allow-listed inside
-    // updateSession (they carry their own HMAC auth).
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.webp).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\.svg|.*\.png|.*\.jpg|.*\.jpeg|.*\.gif|.*\.webp).*)",
   ],
 };

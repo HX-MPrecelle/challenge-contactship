@@ -14,27 +14,35 @@ import {
   Users,
 } from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { createT, type Locale } from "@/lib/i18n/index";
 
-const SETTINGS_SECTIONS = [
-  { id: "general", label: "General" },
-  { id: "hubspot", label: "HubSpot" },
-  { id: "sync", label: "Sincronización" },
-  { id: "ai", label: "IA" },
-] as const;
+type Props = {
+  userEmail: string;
+  locale: Locale;
+};
 
-const NAV = [
-  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/contacts", label: "Contactos", Icon: Users },
-  { href: "/conflicts", label: "Conflictos", Icon: AlertTriangle },
-  { href: "/chat", label: "Chat", Icon: MessageSquare },
-  { href: "/sync", label: "Sync", Icon: Activity },
-] as const;
-
-export function Sidebar({ userEmail }: { userEmail: string }) {
+export function Sidebar({ userEmail, locale }: Props) {
+  const t = createT(locale);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeSection = searchParams.get("section") ?? "general";
   const onSettings = pathname.startsWith("/settings");
+
+  const NAV = [
+    { href: "/dashboard", label: t("nav.dashboard"), Icon: LayoutDashboard },
+    { href: "/contacts", label: t("nav.contacts"), Icon: Users },
+    { href: "/conflicts", label: t("nav.conflicts"), Icon: AlertTriangle },
+    { href: "/chat", label: t("nav.chat"), Icon: MessageSquare },
+    { href: "/sync", label: t("nav.sync"), Icon: Activity },
+  ] as const;
+
+  const SETTINGS_SECTIONS = [
+    { id: "general", label: t("nav.settings.general") },
+    { id: "hubspot", label: t("nav.settings.hubspot") },
+    { id: "sync", label: t("nav.settings.sync") },
+    { id: "ai", label: t("nav.settings.ai") },
+  ] as const;
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-border-default bg-bg-surface p-3">
@@ -67,7 +75,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
           );
         })}
 
-        {/* Settings — always shown, expands inline when active */}
+        {/* Settings with inline sub-menu */}
         <div className="flex flex-col gap-0.5">
           <Link
             href="/settings"
@@ -79,14 +87,13 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
             ].join(" ")}
           >
             <Settings2 size={16} />
-            <span className="flex-1">Settings</span>
+            <span className="flex-1">{t("nav.settings")}</span>
             <ChevronDown
               size={13}
               className={`text-text-muted transition-transform ${onSettings ? "rotate-180" : ""}`}
             />
           </Link>
 
-          {/* Inline sub-items — only visible when on /settings */}
           {onSettings && (
             <div className="ml-6 flex flex-col gap-0.5 py-0.5">
               {SETTINGS_SECTIONS.map((s) => {
@@ -112,6 +119,9 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border-default pt-3">
+        {/* Language switcher */}
+        <LanguageSwitcher />
+
         <div className="px-2 pb-1 text-xs text-text-muted">{userEmail}</div>
         <form action={signOut}>
           <button
@@ -119,7 +129,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
             className="flex h-[34px] w-full items-center gap-2 rounded-md px-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
           >
             <LogOut size={16} />
-            <span>Cerrar sesión</span>
+            <span>{t("nav.logout")}</span>
           </button>
         </form>
       </div>

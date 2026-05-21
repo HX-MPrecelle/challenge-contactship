@@ -53,7 +53,19 @@ const InsightsSchema = z.object({
     ),
 });
 
-const SYSTEM_PROMPT = `Sos un asistente de ventas B2B. Vas a recibir información de un contacto del CRM y tenés que devolver un análisis breve y accionable.
+function getSystemPrompt(locale = "es"): string {
+  if (locale === "en") {
+    return `You are a B2B sales assistant. You will receive information about a CRM contact and must return a brief, actionable analysis.
+
+Lead score criteria:
+- 80-100: complete data + advanced stage (negotiation/closedwon) + recent activity
+- 50-79: partial data + mid-stage + some activity
+- 20-49: minimal data + early stage + little activity
+- 0-19: almost empty data + no activity + abandonment signals
+
+Be specific, actionable, and concise. Always respond in English.`;
+  }
+  return `Sos un asistente de ventas B2B. Vas a recibir información de un contacto del CRM y tenés que devolver un análisis breve y accionable.
 
 Criterios del lead_score:
 - 80-100: datos completos + etapa avanzada (negotiation/closedwon) + actividad reciente
@@ -62,6 +74,9 @@ Criterios del lead_score:
 - 0-19: datos casi vacíos + sin actividad + señales de abandono
 
 Sé específico, accionable y conciso. Hablá siempre en español rioplatense.`;
+}
+
+const SYSTEM_PROMPT = getSystemPrompt();
 
 /**
  * Build (or reuse) AI insights for a contact. Reads the four-row cache from
@@ -76,7 +91,8 @@ export async function getOrGenerateInsights(
   admin: AdminClient,
   orgId: string,
   contactId: string,
-  contactText: string
+  contactText: string,
+  locale = "es"
 ): Promise<CachedInsights | { error: string }> {
   if (!process.env.OPENAI_API_KEY) {
     return { error: "OPENAI_API_KEY no está configurada en el entorno." };
@@ -131,9 +147,11 @@ export async function getOrGenerateInsights(
   try {
     const result = await generateObject({
       model: MODEL,
-      system: SYSTEM_PROMPT,
+      system: getSystemPrompt(locale),
       schema: InsightsSchema,
-      prompt: `Contacto:\n${contactText}\n\nDevolvé el análisis.`,
+      prompt: locale === "en"
+        ? `Contact:\n${contactText}\n\nReturn the analysis.`
+        : `Contacto:\n${contactText}\n\nDevolvé el análisis.`,
     });
     object = result.object;
   } catch (err) {

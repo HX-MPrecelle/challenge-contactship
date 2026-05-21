@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import {
   AlertTriangle,
   ArrowRight,
@@ -10,6 +11,13 @@ import {
 } from "lucide-react";
 import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
 import { createClient } from "@/lib/supabase/server";
+import {
+  createT,
+  LOCALE_COOKIE,
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "@/lib/i18n/index";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +42,11 @@ export default async function DashboardPage() {
   const orgId = user.user_metadata?.org_id as string | undefined;
   if (!orgId) redirect("/login?error=no-org");
   if (!user.user_metadata?.onboarding_complete) redirect("/onboarding");
+
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value as Locale | undefined;
+  const locale: Locale = rawLocale && SUPPORTED_LOCALES.includes(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+  const t = createT(locale);
 
   const [
     { data: org },
@@ -62,37 +75,37 @@ export default async function DashboardPage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
       <header className="pb-6">
         <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
-          {new Date().toLocaleDateString("es-AR", {
+          {new Date().toLocaleDateString(locale === "es" ? "es-AR" : "en-US", {
             weekday: "long",
             day: "numeric",
             month: "long",
           })}
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-text-primary">
-          Hola, {org?.name ?? "ContactShip"}
+          {t("dashboard.greeting", { name: org?.name ?? "ContactShip" })}
         </h1>
         <p className="mt-0.5 text-sm text-text-secondary">
           {(conflicts ?? 0) > 0
-            ? `Tenés ${conflicts} conflicto${conflicts === 1 ? "" : "s"} pendiente${conflicts === 1 ? "" : "s"} de resolver.`
-            : `${total ?? 0} contactos activos sincronizados con HubSpot.`}
+            ? t("dashboard.subtitle.conflicts", { count: conflicts ?? 0, plural: (conflicts ?? 0) === 1 ? "" : "s" })
+            : t("dashboard.subtitle.ok", { count: total ?? 0 })}
         </p>
       </header>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           icon={<Users size={14} />}
-          label="Contactos"
+          label={t("dashboard.stat.contacts")}
           value={total ?? 0}
           href="/contacts"
         />
         <StatCard
           icon={<Globe2 size={14} />}
-          label="Países"
+          label={t("dashboard.stat.countries")}
           value={countryCounts.length}
         />
         <StatCard
           icon={<AlertTriangle size={14} />}
-          label="Conflictos"
+          label={t("dashboard.stat.conflicts")}
           value={conflicts ?? 0}
           tone={(conflicts ?? 0) > 0 ? "warning" : "default"}
           href={(conflicts ?? 0) > 0 ? "/conflicts" : undefined}
@@ -103,7 +116,7 @@ export default async function DashboardPage() {
             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-success/10 text-success">
               <Sparkles size={11} />
             </span>
-            Sync health
+            {t("dashboard.stat.syncHealth")}
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-3xl font-semibold tabular-nums text-text-primary">
@@ -115,24 +128,24 @@ export default async function DashboardPage() {
                 style={{ width: `${syncPct}%` }}
               />
             </div>
-            <span className="text-[10px] text-text-muted">{synced ?? 0} de {total ?? 0} sincronizados</span>
+            <span className="text-[10px] text-text-muted">{t("dashboard.stat.syncedOf", { synced: synced ?? 0, total: total ?? 0 })}</span>
           </div>
         </div>
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Breakdown
-          title="Por etapa del ciclo"
+          title={t("dashboard.breakdown.stage")}
           rows={stageCounts.slice(0, 6).map((r) => ({
-            label: STAGE_LABEL[r.key ?? ""] ?? r.key ?? "Sin etapa",
+            label: STAGE_LABEL[r.key ?? ""] ?? r.key ?? (locale === "es" ? "Sin etapa" : "No stage"),
             count: r.count,
           }))}
           total={total ?? 0}
         />
         <Breakdown
-          title="Top países"
+          title={t("dashboard.breakdown.countries")}
           rows={countryCounts.slice(0, 6).map((r) => ({
-            label: r.key ?? "Sin país",
+            label: r.key ?? (locale === "es" ? "Sin país" : "No country"),
             count: r.count,
           }))}
           total={total ?? 0}
@@ -142,9 +155,9 @@ export default async function DashboardPage() {
       {/* Lead status breakdown */}
       {leadStatusCounts.length > 0 && (
         <Breakdown
-          title="Estado del lead"
+          title={t("dashboard.breakdown.leadStatus")}
           rows={leadStatusCounts.slice(0, 8).map((r) => ({
-            label: r.key ?? "Sin estado",
+            label: r.key ?? (locale === "es" ? "Sin estado" : "No status"),
             count: r.count,
           }))}
           total={total ?? 0}
@@ -156,14 +169,14 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <QuickLink
           icon={<MessageSquare size={14} />}
-          title="Hablá con tu base"
-          description="Patrones, prioridades, gaps. El chat tiene contexto de todos tus contactos."
+          title={t("dashboard.quicklink.chat")}
+          description={t("dashboard.quicklink.chat.desc")}
           href="/chat"
         />
         <QuickLink
           icon={<Users size={14} />}
-          title="Ver todos los contactos"
-          description="Búsqueda en lenguaje natural, edición bidireccional y realtime."
+          title={t("dashboard.quicklink.contacts")}
+          description={t("dashboard.quicklink.contacts.desc")}
           href="/contacts"
         />
       </section>

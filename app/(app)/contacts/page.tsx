@@ -1,8 +1,16 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
 import { HubSpotSyncButton } from "./HubSpotSyncButton";
+import {
+  createT,
+  LOCALE_COOKIE,
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  type Locale,
+} from "@/lib/i18n/index";
 export const dynamic = "force-dynamic";
 
 type Props = {
@@ -35,6 +43,11 @@ export default async function ContactsPage({ searchParams }: Props) {
     redirect("/onboarding");
   }
 
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value as Locale | undefined;
+  const locale: Locale = rawLocale && SUPPORTED_LOCALES.includes(rawLocale) ? rawLocale : DEFAULT_LOCALE;
+  const t = createT(locale);
+
   const { data: contacts, error } = await supabase
     .from("contacts")
     .select(
@@ -58,10 +71,10 @@ export default async function ContactsPage({ searchParams }: Props) {
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary">
-              Contactos
+              {t("contacts.title")}
             </h1>
             <p className="text-sm text-text-secondary">
-              Espejo en tiempo real de tu portal HubSpot.
+              {t("contacts.subtitle")}
             </p>
           </div>
         </div>

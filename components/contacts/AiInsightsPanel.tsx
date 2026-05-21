@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmailDraftDialog } from "@/components/contacts/EmailDraftDialog";
 import { generateInsightsAction } from "@/actions/ai";
+import { useI18n } from "@/lib/i18n/context";
 
 type Insights = {
   summary: string;
@@ -15,6 +16,7 @@ type Insights = {
 };
 
 export function AiInsightsPanel({ contactId }: { contactId: string }) {
+  const { locale, t } = useI18n();
   const [insights, setInsights] = useState<Insights | null>(null);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
@@ -24,7 +26,7 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
 
   function load(forceRefresh = false) {
     startTransition(async () => {
-      const result = await generateInsightsAction({ contactId, forceRefresh });
+      const result = await generateInsightsAction({ contactId, forceRefresh, locale });
       setIsLoading(false);
       if (!result.success) {
         setError(result.error);
@@ -53,7 +55,7 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
           </div>
           <div className="flex flex-col">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              AI Insights
+              {t("contact.section.insights")}
             </h2>
             {generatedAt && (
               <span className="text-[10px] font-mono text-text-muted">
@@ -89,20 +91,20 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
         </div>
       ) : insights ? (
         <div className="flex flex-col gap-4">
-          <LeadScoreCard score={insights.leadScore} />
+          <LeadScoreCard score={insights.leadScore} label={t("contact.insights.leadScore")} />
 
-          <Card icon={<Sparkles size={12} />} label="Resumen">
+          <Card icon={<Sparkles size={12} />} label={t("contact.insights.summary")}>
             {insights.summary}
           </Card>
 
-          <Card icon={<Zap size={12} />} label="Próxima acción" highlight>
+          <Card icon={<Zap size={12} />} label={t("contact.insights.nextAction")} highlight>
             {insights.nextAction}
           </Card>
 
           {insights.riskSignal && (
             <Card
               icon={<AlertTriangle size={12} />}
-              label="Riesgo"
+              label={t("contact.insights.risk")}
               tone="error"
             >
               {insights.riskSignal}
@@ -116,13 +118,13 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
         <div className="flex items-center gap-3 rounded-lg border border-dashed border-border-strong px-4 py-3">
           <Sparkles size={16} className="shrink-0 text-text-muted" />
           <div className="flex flex-1 flex-col gap-0.5">
-            <span className="text-sm text-text-secondary">Sin insights todavía</span>
+            <span className="text-sm text-text-secondary">{t("contact.insights.noInsights")}</span>
             <span className="text-xs text-text-muted">
-              No hay suficiente actividad para generar un análisis.
+              {t("contact.insights.noInsightsDesc")}
             </span>
           </div>
           <Button size="sm" variant="secondary" onClick={() => load(true)} disabled={isPending}>
-            Generar ahora
+            {t("contact.insights.generate")}
           </Button>
         </div>
       )}
@@ -130,7 +132,7 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
   );
 }
 
-function LeadScoreCard({ score }: { score: number }) {
+function LeadScoreCard({ score, label }: { score: number; label: string }) {
   const tone =
     score >= 80
       ? { text: "text-success", bar: "bg-success", label: "Hot" }
@@ -143,7 +145,7 @@ function LeadScoreCard({ score }: { score: number }) {
     <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-bg-subtle px-3.5 py-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-          Lead score
+          {label}
         </span>
         <span className={`text-3xl font-semibold tabular-nums ${tone.text}`}>
           {score}
