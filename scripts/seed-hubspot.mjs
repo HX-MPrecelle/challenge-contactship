@@ -24,18 +24,25 @@ if (!TOKEN) {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const v2Only = args.includes("--v2");
+const v3Only = args.includes("--v3");
 
 let contacts = [];
 
-if (!v2Only) {
+if (!v2Only && !v3Only) {
   const v1 = JSON.parse(readFileSync(join(__dirname, "seed-data.json"), "utf8"));
   contacts = contacts.concat(v1);
   console.log(`seed-data.json: ${v1.length} contactos`);
 }
 
-const v2 = JSON.parse(readFileSync(join(__dirname, "seed-data-v2.json"), "utf8"));
-contacts = contacts.concat(v2);
-console.log(`seed-data-v2.json: ${v2.length} contactos`);
+if (!v3Only) {
+  const v2 = JSON.parse(readFileSync(join(__dirname, "seed-data-v2.json"), "utf8"));
+  contacts = contacts.concat(v2);
+  console.log(`seed-data-v2.json: ${v2.length} contactos`);
+}
+
+const v3 = JSON.parse(readFileSync(join(__dirname, "seed-data-v3.json"), "utf8"));
+contacts = contacts.concat(v3);
+console.log(`seed-data-v3.json: ${v3.length} contactos`);
 console.log(`Total a cargar: ${contacts.length} contactos`);
 
 // HubSpot's batch create endpoint accepts up to 100 contacts per call.
