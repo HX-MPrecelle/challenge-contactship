@@ -259,11 +259,36 @@ export function ContactsChat() {
           {messages.length === 0 ? (
             <ChatEmptyState onPick={(p) => setInput(p)} />
           ) : (
-            messages.map((message) => (
-              <Message key={message.id} role={message.role} parts={message.parts} />
-            ))
+            messages
+              .filter((message) => {
+                // Hide intermediate assistant messages that have no visible content
+                // (tool call results only — no text, no citations). These appear
+                // during multi-step tool calling and would cause double bouncing dots.
+                if (message.role === "user") return true;
+                const hasText = message.parts.some(
+                  (p): p is { type: "text"; text: string } =>
+                    p.type === "text" && (p as { type: "text"; text: string }).text.length > 0
+                );
+                const hasCitations = message.parts.some(
+                  (p) => p.type === "data-citations"
+                );
+                return hasText || hasCitations;
+              })
+              .map((message) => (
+                <Message key={message.id} role={message.role} parts={message.parts} />
+              ))
           )}
-          {(status === "submitted" || status === "streaming") && <ThinkingDots />}
+          {/* Only show ThinkingDots when no assistant message with visible text is
+              already streaming — prevents double bouncing during tool call rounds. */}
+          {(status === "submitted" || status === "streaming") &&
+            !messages.some(
+              (m) =>
+                m.role === "assistant" &&
+                m.parts.some(
+                  (p): p is { type: "text"; text: string } =>
+                    p.type === "text" && (p as { type: "text"; text: string }).text.length > 0
+                )
+            ) && <ThinkingDots />}
           {error && (
             <div className="rounded-lg border border-error/40 bg-error-subtle px-3 py-2 text-xs text-error">
               {error.message}
@@ -388,12 +413,17 @@ function Message({
     .map((p) => p.text)
     .join("");
 
-  const citations = parts
+  // Deduplicate citations by id — onStepFinish emits after every tool round,
+  // so the same contact can appear in multiple data-citations parts.
+  const rawCitations = parts
     .filter(
       (p): p is { type: "data-citations"; id?: string; data: { contacts: ContactCitation[] } } =>
         p.type === "data-citations"
     )
     .flatMap((p) => p.data.contacts);
+  const citations = Array.from(
+    new Map(rawCitations.map((c) => [c.id, c])).values()
+  );
 
   if (isUser) {
     return (
@@ -444,14 +474,16 @@ function ThinkingDots() {
 
 function Citations({ contacts }: { contacts: ContactCitation[] }) {
   const { t } = useI18n();
+  // contacts is already deduplicated in Message, but guard here too
+  const unique = Array.from(new Map(contacts.map((c) => [c.id, c])).values());
   return (
     <div className="flex flex-col gap-1.5">
       <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-text-muted">
         <Sparkles size={9} />
-        {t("chat.citations.basedOn", { n: contacts.length, plural: contacts.length === 1 ? "" : "s" })}
+        {t("chat.citations.basedOn", { n: unique.length, plural: unique.length === 1 ? "" : "s" })}
       </span>
       <div className="flex flex-wrap gap-1">
-        {contacts.map((c) => (
+        {unique.map((c) => (
           <Link
             key={c.id}
             href={`/contacts/${c.id}`}
