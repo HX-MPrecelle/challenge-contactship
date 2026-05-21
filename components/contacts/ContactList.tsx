@@ -62,19 +62,6 @@ const LIFECYCLE_FILTER_VALUES = [
 
 const PAGE_SIZE = 10;
 
-/** Returns a deduplicated array of page indices to display in the paginator. */
-function getPaginationPages(current: number, total: number): number[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
-
-  const set = new Set<number>();
-  set.add(0);                                           // always first
-  set.add(total - 1);                                   // always last
-  for (let i = Math.max(0, current - 2); i <= Math.min(total - 1, current + 2); i++) {
-    set.add(i);                                         // window around current
-  }
-
-  return Array.from(set).sort((a, b) => a - b);
-}
 
 export function ContactList({
   initialContacts,
@@ -538,6 +525,7 @@ export function ContactList({
         </p>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
+            {/* ‹ prev arrow */}
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -546,21 +534,42 @@ export function ContactList({
             >
               ‹
             </button>
-            {getPaginationPages(page, totalPages).map((p) => (
+
+            {/* Página anterior — placeholder invisible si no existe (evita layout shift) */}
+            {page > 0 ? (
               <button
-                key={p}
                 type="button"
-                onClick={() => setPage(p)}
-                className={[
-                  "flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors",
-                  p === page
-                    ? "bg-brand text-white"
-                    : "border border-border-default text-text-secondary hover:bg-bg-subtle",
-                ].join(" ")}
+                onClick={() => setPage(page - 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle"
               >
-                {p + 1}
+                {page}
               </button>
-            ))}
+            ) : (
+              <span className="h-7 w-7" />
+            )}
+
+            {/* Página actual — siempre visible */}
+            <button
+              type="button"
+              className="flex h-7 w-7 items-center justify-center rounded-md bg-brand text-xs font-medium text-white"
+            >
+              {page + 1}
+            </button>
+
+            {/* Página siguiente — placeholder invisible si no existe */}
+            {page < totalPages - 1 ? (
+              <button
+                type="button"
+                onClick={() => setPage(page + 1)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle"
+              >
+                {page + 2}
+              </button>
+            ) : (
+              <span className="h-7 w-7" />
+            )}
+
+            {/* › next arrow */}
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
