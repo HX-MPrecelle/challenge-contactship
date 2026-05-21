@@ -10,12 +10,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { BackLink } from "@/components/layout/BackLink";
+import { BackButton } from "@/components/layout/BackButton";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 25;
+
 type Props = {
-  searchParams: Promise<{ type?: string; direction?: string }>;
+  searchParams: Promise<{ type?: string; direction?: string; page?: string }>;
 };
 
 const EVENT_META: Record<
@@ -30,7 +32,9 @@ const EVENT_META: Record<
 };
 
 export default async function ActivityPage({ searchParams }: Props) {
-  const { type, direction } = await searchParams;
+  const { type, direction, page: pageStr } = await searchParams;
+  const page = Math.max(0, parseInt(pageStr ?? "0") || 0);
+  const offset = page * PAGE_SIZE;
 
   const supabase = await createClient();
   const {
@@ -41,17 +45,23 @@ export default async function ActivityPage({ searchParams }: Props) {
   const orgId = user.user_metadata?.org_id as string | undefined;
   if (!orgId) redirect("/login?error=no-org");
 
+  let countQuery = supabase
+    .from("sync_events")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId);
+
   let query = supabase
     .from("sync_events")
     .select("id, event_type, direction, created_at, error_message, contact_id")
     .eq("org_id", orgId)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range(offset, offset + PAGE_SIZE - 1);
 
-  if (type) query = query.eq("event_type", type);
-  if (direction) query = query.eq("direction", direction);
+  if (type) { query = query.eq("event_type", type); countQuery = countQuery.eq("event_type", type); }
+  if (direction) { query = query.eq("direction", direction); countQuery = countQuery.eq("direction", direction); }
 
-  const { data: events } = await query;
+  const [{ data: events }, { count: totalCount }] = await Promise.all([query, countQuery]);
+  const totalPages = Math.max(1, Math.ceil((totalCount ?? 0) / PAGE_SIZE));
 
   const EVENT_TYPES = ["create", "update", "conflict", "error", "skip"];
   const DIRECTIONS = [
@@ -61,7 +71,7 @@ export default async function ActivityPage({ searchParams }: Props) {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
-      <BackLink />
+      <BackButton />
       <header className="pb-6">
         <h1 className="text-2xl font-semibold text-text-primary">Activity</h1>
         <p className="mt-1 text-sm text-text-secondary">
@@ -97,7 +107,8 @@ export default async function ActivityPage({ searchParams }: Props) {
           <p className="text-sm text-text-muted">Sin eventos que mostrar.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border-default bg-bg-surface">
+        <div className="overflow-hidden rounded-xl border border-border-default bg-bg-surface">
+          <div className="max-h-[600px] overflow-y-auto">
           <ol className="flex flex-col">
             {(events ?? []).map((event, index) => {
               const isLast = index === (events?.length ?? 0) - 1;
@@ -159,6 +170,33 @@ export default async function ActivityPage({ searchParams }: Props) {
               );
             })}
           </ol>
+          </div>
+          {/* Pagination footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-border-default px-5 py-3">
+              <span className="text-xs text-text-muted">
+                Página {page + 1} de {totalPages} · {totalCount ?? 0} eventos
+              </span>
+              <div className="flex items-center gap-1.5">
+                {page > 0 && (
+                  <Link
+                    href={`/activity?${new URLSearchParams({ ...(type ? { type } : {}), ...(direction ? { direction } : {}), page: String(page - 1) }).toString()}`}
+                    className="rounded-md border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-subtle"
+                  >
+                    ← Anterior
+                  </Link>
+                )}
+                {page < totalPages - 1 && (
+                  <Link
+                    href={`/activity?${new URLSearchParams({ ...(type ? { type } : {}), ...(direction ? { direction } : {}), page: String(page + 1) }).toString()}`}
+                    className="rounded-md border border-border-default px-3 py-1 text-xs text-text-secondary hover:bg-bg-subtle"
+                  >
+                    Siguiente →
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>

@@ -57,6 +57,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
+      {/* Back navigation */}
       <Link
         href="/contacts"
         className="mb-6 inline-flex items-center gap-1.5 text-xs text-text-secondary transition-colors hover:text-text-primary"
@@ -65,24 +66,49 @@ export default async function ContactDetailPage({ params }: Props) {
         Volver a contactos
       </Link>
 
-      <header className="flex flex-col gap-4 pb-6">
+      {/* Hero — name + inline metadata strip */}
+      <header className="flex flex-col gap-3 pb-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="font-heading text-3xl font-semibold text-text-primary">
-              {fullName}
-            </h1>
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-3xl font-semibold text-text-primary">{fullName}</h1>
             <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
               {contact.job_title && <span>{contact.job_title}</span>}
-              {contact.job_title && contact.company && (
-                <span className="text-text-muted">·</span>
+              {contact.job_title && contact.company && <span className="text-text-muted">@</span>}
+              {contact.company && <span className="font-medium text-text-primary">{contact.company}</span>}
+            </div>
+            {/* Metadata pills — moved from sidebar card */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {contact.lifecycle_stage && (
+                <span className="rounded-full bg-brand-subtle px-2 py-0.5 text-xs font-medium text-brand-on-subtle">
+                  {contact.lifecycle_stage}
+                </span>
               )}
-              {contact.company && <span>{contact.company}</span>}
+              {contact.lead_status && (
+                <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
+                  {contact.lead_status}
+                </span>
+              )}
+              {contact.country && (
+                <span className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 text-xs text-text-secondary">
+                  {contact.country}{contact.city ? ` · ${contact.city}` : ""}
+                </span>
+              )}
+              {contact.website && (
+                <a
+                  href={contact.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border-default bg-bg-subtle px-2 py-0.5 font-mono text-xs text-text-muted hover:text-brand"
+                >
+                  {contact.website.replace(/^https?:\/\//, "")}
+                </a>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
             <SyncStatusBadge status={contact.sync_status} />
-            <span className="font-mono text-xs text-text-muted">
-              HubSpot #{contact.hubspot_id}
+            <span className="font-mono text-[10px] text-text-muted">
+              #{contact.hubspot_id}
             </span>
           </div>
         </div>
@@ -92,16 +118,16 @@ export default async function ContactDetailPage({ params }: Props) {
             Este contacto fue archivado desde HubSpot.
           </div>
         )}
-
         {contact.sync_status === "conflict" && (
           <ConflictBanner contactId={contact.id} />
         )}
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px] lg:items-start">
+      {/* Main grid — right column is shorter now (no metadata card) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
-            <h2 className="pb-4 font-heading text-lg font-semibold text-text-primary">
+            <h2 className="pb-4 text-lg font-semibold text-text-primary">
               Datos del contacto
             </h2>
             <ContactForm
@@ -119,9 +145,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <header className="flex items-baseline justify-between pb-4">
-              <h2 className="font-heading text-lg font-semibold text-text-primary">
-                Actividad
-              </h2>
+              <h2 className="text-lg font-semibold text-text-primary">Actividad</h2>
               <span className="font-mono text-xs text-text-muted">
                 Último cambio:{" "}
                 {new Date(contact.local_updated_at).toLocaleString("es-AR", {
@@ -134,22 +158,9 @@ export default async function ContactDetailPage({ params }: Props) {
           </section>
         </div>
 
+        {/* Right column — only insights + similar (metadata moved to hero) */}
         <aside className="flex flex-col gap-6">
-          <section className="rounded-xl border border-border-default bg-bg-surface p-5">
-            <h2 className="pb-3 font-heading text-sm font-semibold text-text-secondary uppercase tracking-wide">
-              Metadata
-            </h2>
-            <dl className="flex flex-col gap-2 text-sm">
-              <MetaRow label="Lifecycle stage" value={contact.lifecycle_stage} />
-              <MetaRow label="Lead status" value={contact.lead_status} />
-              <MetaRow label="País" value={contact.country} />
-              <MetaRow label="Ciudad" value={contact.city} />
-              <MetaRow label="Website" value={contact.website} mono />
-            </dl>
-          </section>
-
           <AiInsightsPanel contactId={contact.id} />
-
           <SimilarContactsPanel contactId={contact.id} />
         </aside>
       </div>

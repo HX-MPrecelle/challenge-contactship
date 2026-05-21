@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { createClient } from "@/lib/supabase/server";
@@ -26,7 +27,11 @@ export default async function AppLayout({
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex h-screen overflow-hidden bg-background text-foreground">
-        {showSidebar && <Sidebar userEmail={user.email ?? ""} />}
+        {showSidebar && (
+          <Suspense fallback={<div className="w-[220px] shrink-0 border-r border-border-default bg-bg-surface" />}>
+            <Sidebar userEmail={user.email ?? ""} />
+          </Suspense>
+        )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </TooltipProvider>

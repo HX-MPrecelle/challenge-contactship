@@ -41,43 +41,22 @@ export default async function DashboardPage() {
     { data: stageRows },
     { data: countryRows },
     { count: conflicts },
+    { count: synced },
+    { data: leadStatusRows },
   ] = await Promise.all([
-    supabase
-      .from("organizations")
-      .select("name")
-      .eq("id", orgId)
-      .maybeSingle(),
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .eq("is_archived", false),
-    supabase
-      .from("contacts")
-      .select("lifecycle_stage")
-      .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .limit(500),
-    supabase
-      .from("contacts")
-      .select("country")
-      .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .limit(500),
-    supabase
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .eq("sync_status", "conflict"),
+    supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
+    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false),
+    supabase.from("contacts").select("lifecycle_stage").eq("org_id", orgId).eq("is_archived", false).limit(500),
+    supabase.from("contacts").select("country").eq("org_id", orgId).eq("is_archived", false).limit(500),
+    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("sync_status", "conflict"),
+    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("sync_status", "synced"),
+    supabase.from("contacts").select("lead_status").eq("org_id", orgId).eq("is_archived", false).not("lead_status", "is", null).limit(500),
   ]);
 
-  const stageCounts = aggregateCounts(
-    (stageRows ?? []).map((r) => r.lifecycle_stage)
-  );
-  const countryCounts = aggregateCounts(
-    (countryRows ?? []).map((r) => r.country)
-  );
+  const stageCounts = aggregateCounts((stageRows ?? []).map((r) => r.lifecycle_stage));
+  const countryCounts = aggregateCounts((countryRows ?? []).map((r) => r.country));
+  const leadStatusCounts = aggregateCounts((leadStatusRows ?? []).map((r) => r.lead_status));
+  const syncPct = total ? Math.round(((synced ?? 0) / total) * 100) : 0;
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
@@ -99,25 +78,46 @@ export default async function DashboardPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard
           icon={<Users size={14} />}
-          label="Contactos totales"
+          label="Contactos"
           value={total ?? 0}
           href="/contacts"
         />
         <StatCard
           icon={<Globe2 size={14} />}
-          label="Países distintos"
+          label="Países"
           value={countryCounts.length}
         />
         <StatCard
           icon={<AlertTriangle size={14} />}
-          label="Conflictos sin resolver"
+          label="Conflictos"
           value={conflicts ?? 0}
           tone={(conflicts ?? 0) > 0 ? "warning" : "default"}
           href={(conflicts ?? 0) > 0 ? "/conflicts" : undefined}
         />
+        {/* Sync health stat */}
+        <div className="flex flex-col gap-2 rounded-xl border border-border-default bg-bg-surface px-4 py-3">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-success/10 text-success">
+              <Sparkles size={11} />
+            </span>
+            Sync health
+          </div>
+          <div className="flex items-end gap-2">
+            <span className="text-3xl font-semibold tabular-nums text-text-primary">
+              {syncPct}%
+            </span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-bg-subtle">
+            <div
+              className={`h-full rounded-full transition-all ${syncPct >= 90 ? "bg-success" : syncPct >= 70 ? "bg-warning" : "bg-error"}`}
+              style={{ width: `${syncPct}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-text-muted">{synced ?? 0} de {total ?? 0} sincronizados</span>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -138,6 +138,18 @@ export default async function DashboardPage() {
           total={total ?? 0}
         />
       </div>
+
+      {/* Lead status breakdown */}
+      {leadStatusCounts.length > 0 && (
+        <Breakdown
+          title="Estado del lead"
+          rows={leadStatusCounts.slice(0, 8).map((r) => ({
+            label: r.key ?? "Sin estado",
+            count: r.count,
+          }))}
+          total={total ?? 0}
+        />
+      )}
 
       <DashboardPriorities />
 

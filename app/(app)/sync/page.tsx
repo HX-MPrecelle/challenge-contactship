@@ -4,7 +4,7 @@ import { Activity, RefreshCw } from "lucide-react";
 import { SyncHealthPanel } from "@/components/sync/SyncHealthPanel";
 import { createClient } from "@/lib/supabase/server";
 import { ResyncButton } from "./ResyncButton";
-import { BackLink } from "@/components/layout/BackLink";
+import { BackButton } from "@/components/layout/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function SyncPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
-      <BackLink />
+      <BackButton />
       <header className="flex items-start justify-between pb-6">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Sync Health</h1>
@@ -101,25 +101,27 @@ export default async function SyncPage() {
         {(recentEvents ?? []).length === 0 ? (
           <p className="text-sm text-text-muted">Sin eventos registrados.</p>
         ) : (
-          <ol className="flex flex-col divide-y divide-border-default">
-            {(recentEvents ?? []).map((e) => (
-              <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-xs">
-                <div className="flex items-center gap-2">
-                  <EventDot type={e.event_type} />
-                  <span className="font-medium text-text-primary capitalize">{e.event_type}</span>
-                  <span className="text-text-muted">
-                    {e.direction === "hubspot_to_local" ? "← HubSpot" : "→ HubSpot"}
+          <div className="max-h-72 overflow-y-auto rounded-lg border border-border-default">
+            <ol className="flex flex-col divide-y divide-border-default">
+              {(recentEvents ?? []).map((e) => (
+                <li key={e.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <EventDot type={e.event_type} />
+                    <span className="font-medium text-text-primary capitalize">{e.event_type}</span>
+                    <span className="text-text-muted">
+                      {e.direction === "hubspot_to_local" ? "← HubSpot" : "→ HubSpot"}
+                    </span>
+                  </div>
+                  <span className="shrink-0 font-mono text-text-muted">
+                    {new Date(e.created_at).toLocaleString("es-AR", {
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
                   </span>
-                </div>
-                <span className="font-mono text-text-muted">
-                  {new Date(e.created_at).toLocaleString("es-AR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </span>
-              </li>
-            ))}
-          </ol>
+                </li>
+              ))}
+            </ol>
+          </div>
         )}
       </section>
     </main>

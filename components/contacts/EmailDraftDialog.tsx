@@ -118,7 +118,7 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
           <span>Borrador de email</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-subtle">
@@ -202,6 +202,20 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
 
           {draft && (
             <div className="flex flex-col gap-3">
+              {/* Compact summary of tone+goal when draft is shown */}
+              <div className="flex items-center justify-between rounded-md bg-bg-subtle px-3 py-2 text-xs text-text-secondary">
+                <span>
+                  Tono: <span className="font-medium text-text-primary capitalize">{tone}</span>
+                  {" · "}Objetivo: <span className="font-medium text-text-primary">{goal.slice(0, 50)}{goal.length > 50 ? "…" : ""}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="text-text-muted hover:text-text-primary"
+                >
+                  Cambiar
+                </button>
+              </div>
               <div className="rounded-lg border border-brand/40 bg-brand-subtle px-3 py-2.5 text-xs">
                 <span className="font-medium text-brand-on-subtle">Por qué este enfoque: </span>
                 <span className="text-text-secondary">{draft.rationale}</span>
@@ -228,8 +242,8 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
                   id="body"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  rows={10}
-                  className="min-h-[200px] w-full resize-y rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
+                  rows={14}
+                  className="min-h-[280px] w-full resize-y rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
                 />
               </div>
 

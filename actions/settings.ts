@@ -61,15 +61,32 @@ export async function triggerResync(): Promise<
   const orgId = user.user_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
-  // Kick off a full re-sync by touching the last_synced_at so the cron picks it up,
-  // and mark as pending. The actual sync runs in the next cron tick.
-  const { error } = await supabase
+  // Clear last_synced_at so the cron fetches all contacts again.
+  const admin = createServiceClient();
+  const { error } = await admin
     .from("hubspot_connections")
     .update({ last_synced_at: null })
     .eq("org_id", orgId);
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/settings");
-  return { success: true, message: "Re-sync solicitado. El cron lo ejecutará en breve." };
+  // Immediately invoke the cron sync endpoint so contacts update in real time
+  // rather than waiting for the next scheduled tick (critical in local dev).
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret) {
+      void fetch(`${baseUrl}/api/cron/sync`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${cronSecret}` },
+      });
+    }
+  } catch (err) {
+    // Non-fatal — the cron will run on its schedule as fallback.
+    console.warn("[triggerResync] immediate cron call failed", err);
+  }
+
+  revalidatePath("/sync");
+  revalidatePath("/contacts");
+  return { success: true, message: "Sync iniciado. Los contactos se actualizarán en tiempo real." };
 }

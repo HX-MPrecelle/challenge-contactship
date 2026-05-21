@@ -72,6 +72,8 @@ const STATUS_FILTERS: { value: SyncStatus; label: string; dot: string }[] = [
   { value: "error", label: "Error", dot: "bg-error" },
 ];
 
+const PAGE_SIZE = 10;
+
 export function ContactList({
   initialContacts,
   orgId,
@@ -84,6 +86,7 @@ export function ContactList({
     initialStatusFilter ?? null
   );
   const [lifecycleFilter, setLifecycleFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -160,6 +163,12 @@ export function ContactList({
     }
     return result;
   }, [contacts, query, aiFilter, statusFilter]);
+
+  // Reset to page 0 whenever any filter changes
+  useEffect(() => { setPage(0); }, [statusFilter, lifecycleFilter, aiFilter, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   function runAiSearch() {
     const q = query.trim();
@@ -281,30 +290,28 @@ export function ContactList({
         </Button>
       </div>
 
-      {/* Filter pills row */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* Lifecycle stage filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Etapa:</span>
-          {LIFECYCLE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setLifecycleFilter(lifecycleFilter === f.value ? null : f.value)}
-              className={[
-                "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                lifecycleFilter === f.value
-                  ? "border-brand/40 bg-brand-subtle text-brand-on-subtle"
-                  : "border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary",
-              ].join(" ")}
-            >
-              {f.label}
-            </button>
-          ))}
+      {/* Filter row: stage select + sync pills */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Lifecycle stage — select dropdown */}
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] font-medium uppercase tracking-wider text-text-muted" htmlFor="stage-filter">
+            Etapa:
+          </label>
+          <select
+            id="stage-filter"
+            value={lifecycleFilter ?? ""}
+            onChange={(e) => setLifecycleFilter(e.target.value || null)}
+            className="h-7 rounded-md border border-border-default bg-bg-surface px-2 text-xs text-text-primary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-brand/20"
+          >
+            <option value="">Todas</option>
+            {LIFECYCLE_FILTERS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
         </div>
 
-        {/* Sync status filters */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Sync status — pills */}
+        <div className="flex items-center gap-1.5">
           <span className="text-[11px] font-medium uppercase tracking-wider text-text-muted">Sync:</span>
           {STATUS_FILTERS.map((f) => (
             <button
@@ -437,7 +444,7 @@ export function ContactList({
             {filtered.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-10 text-center text-sm text-text-muted"
                 >
                   {contacts.length === 0
@@ -446,7 +453,7 @@ export function ContactList({
                 </td>
               </tr>
             )}
-            {filtered.map((c) => {
+            {paginated.map((c) => {
               const fullName =
                 [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
               return (
@@ -507,11 +514,57 @@ export function ContactList({
         </table>
       </div>
 
-      <p className="text-xs text-text-muted">
-        Mostrando {filtered.length} de {contacts.length} contacto
-        {contacts.length === 1 ? "" : "s"}. Updates en tiempo real via Supabase
-        Realtime.
-      </p>
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-text-muted">
+          {filtered.length} contacto{filtered.length === 1 ? "" : "s"}
+          {(statusFilter || lifecycleFilter || aiFilter) ? " coinciden" : " totales"}
+          {" · "}página {page + 1} de {totalPages}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle disabled:opacity-40"
+            >
+              ‹
+            </button>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              // Show first, last, and pages around current
+              const p = totalPages <= 7 ? i :
+                i === 0 ? 0 :
+                i === 6 ? totalPages - 1 :
+                page - 2 + i;
+              const clamped = Math.max(0, Math.min(totalPages - 1, p));
+              return (
+                <button
+                  key={clamped}
+                  type="button"
+                  onClick={() => setPage(clamped)}
+                  className={[
+                    "flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors",
+                    clamped === page
+                      ? "bg-brand text-white"
+                      : "border border-border-default text-text-secondary hover:bg-bg-subtle",
+                  ].join(" ")}
+                >
+                  {clamped + 1}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle disabled:opacity-40"
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

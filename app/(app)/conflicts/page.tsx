@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ConflictsInbox } from "@/components/conflicts/ConflictsInbox";
-import { BackLink } from "@/components/layout/BackLink";
+import { BackButton } from "@/components/layout/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export default async function ConflictsPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <BackLink />
+      <BackButton />
       <header className="pb-6">
         <h1 className="text-2xl font-semibold text-text-primary">Conflictos</h1>
         <p className="mt-1 text-sm text-text-secondary">

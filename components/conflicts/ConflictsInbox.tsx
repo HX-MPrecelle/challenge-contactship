@@ -66,14 +66,40 @@ export function ConflictsInbox({
 
   if (contacts.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-20 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-success-subtle text-success">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-7 w-7">
+      <div className="flex flex-col items-center gap-6 py-20 text-center">
+        {/* Celebration icon */}
+        <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-success-subtle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-12 w-12 text-success">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
+          {/* Decorative ring */}
+          <div className="absolute inset-0 animate-ping rounded-full bg-success-subtle opacity-30" />
         </div>
-        <p className="text-sm font-medium text-text-primary">Todo en sync</p>
-        <p className="text-xs text-text-muted">No hay conflictos pendientes de resolver.</p>
+
+        <div className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold text-text-primary">
+            Todo en sync 🎉
+          </h2>
+          <p className="max-w-sm text-sm text-text-secondary">
+            No hay conflictos pendientes. Tu base de contactos está perfectamente
+            sincronizada con HubSpot — todos los cambios están alineados.
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <a
+            href="/contacts"
+            className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
+          >
+            Ver contactos
+          </a>
+          <a
+            href="/activity"
+            className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
+          >
+            Ver actividad
+          </a>
+        </div>
       </div>
     );
   }
