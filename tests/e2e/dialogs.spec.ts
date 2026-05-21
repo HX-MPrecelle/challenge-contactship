@@ -103,7 +103,7 @@ test.describe("Filter summary dialog", () => {
     // Run AI search to trigger the filter banner
     const input = page.getByPlaceholder(/buscar/i);
     await input.fill("contactos en Argentina");
-    await page.getByRole("button", { name: /ai search/i }).click();
+    await page.getByRole("button").filter({ hasText: "AI search" }).click();
 
     // Wait for the AI filter banner or timeout
     const banner = page.locator("[class*='bg-brand-subtle']").filter({
@@ -134,7 +134,7 @@ test.describe("Filter summary dialog", () => {
 
     const input = page.getByPlaceholder(/buscar/i);
     await input.fill("leads activos");
-    await page.getByRole("button", { name: /ai search/i }).click();
+    await page.getByRole("button").filter({ hasText: "AI search" }).click();
 
     const banner = page.locator("[class*='bg-brand-subtle']").filter({
       has: page.getByText(/búsqueda con ia aplicada/i),
@@ -170,7 +170,7 @@ test.describe("Conflict diff dialog", () => {
     test.skip((await firstLink.count()) === 0, "No conflict contacts");
 
     await firstLink.click();
-    await page.waitForLoadState("load");
+    await page.waitForURL(/\/contacts\/[a-f0-9-]+$/, { timeout: 10_000 });
 
     const resolveBtn = page.getByRole("button", { name: /resolver con diff/i });
     test.skip((await resolveBtn.count()) === 0, "Contact not in conflict state");
