@@ -24,6 +24,11 @@ export const maxDuration = 60;
 const DATA_MODEL = `
 CRM DATA MODEL (HubSpot mirror):
 
+IMPORTANT: When getStats returns "Unknown" for industry/custom fields, it means
+those contacts were imported before the field was available. Tell the user clearly
+that "Unknown = field not synced yet" and suggest they re-sync from HubSpot to
+get the missing data. Do NOT pretend you can find those "Unknown" contacts by industry.
+
 lifecycle_stage values:
   subscriber | lead | marketingqualifiedlead | salesqualifiedlead | opportunity | customer | evangelist
   → "customer" = closed/won deals (always use this for "leads cerrados", "closed deals", "clients")
@@ -162,19 +167,32 @@ Combine multiple filters for precision.`,
           .eq("org_id", orgId)
           .eq("is_archived", false);
 
+        // Structured column filters — reliable SQL
         if (args.lifecycleStage) q = q.eq("lifecycle_stage", args.lifecycleStage);
         if (args.leadStatus) q = q.eq("lead_status", args.leadStatus);
         if (args.country) q = q.ilike("country", `%${args.country}%`);
         if (args.company) q = q.ilike("company", `%${args.company}%`);
-        if (args.industry) q = q.filter("properties->>'industry'", "ilike", `%${args.industry}%`);
 
         const col = args.orderBy === "company" ? "company" : args.orderBy === "name" ? "first_name" : "local_updated_at";
         q = q.order(col, { ascending: args.orderBy === "name" || args.orderBy === "company" });
 
-        const { data, error } = await q.limit(args.limit ?? 25);
+        // Fetch extra when industry filter is active (client-side JSONB filter
+        // is more reliable than PostgREST JSONB path expressions)
+        const fetchLimit = args.industry ? Math.min(500, (args.limit ?? 25) * 20) : (args.limit ?? 25);
+        const { data, error } = await q.limit(fetchLimit);
         if (error) return { error: (error as { message: string }).message };
 
-        const rows = ((data ?? []) as Record<string, unknown>[]).map(toRow);
+        let rows = ((data ?? []) as Record<string, unknown>[]).map(toRow);
+
+        // Client-side filter for JSONB properties (avoids PostgREST path syntax issues)
+        if (args.industry) {
+          const needle = args.industry.toLowerCase();
+          rows = rows.filter((r) =>
+            (r.industry as string | undefined)?.toLowerCase().includes(needle)
+          );
+        }
+
+        rows = rows.slice(0, args.limit ?? 25);
         addCitations(rows);
         return { found: rows.length, contacts: rows };
       },
