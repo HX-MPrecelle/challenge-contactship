@@ -19,7 +19,7 @@ import { getServerT } from "@/lib/i18n/server";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { DensitySelector } from "@/components/settings/DensitySelector";
-import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/actions/preferences";
+import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/lib/preferences";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";

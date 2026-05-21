@@ -2,11 +2,8 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-
-export type TableDensity = "normal" | "compact";
-
-export const DENSITY_COOKIE = "density";
-export const DEFAULT_DENSITY: TableDensity = "normal";
+import type { TableDensity } from "@/lib/preferences";
+import { DENSITY_COOKIE } from "@/lib/preferences";
 
 export async function setDensity(density: TableDensity): Promise<void> {
   if (density !== "normal" && density !== "compact") return;
@@ -19,8 +16,4 @@ export async function setDensity(density: TableDensity): Promise<void> {
   });
 
   revalidatePath("/contacts", "page");
-}
-
-export function getDensityFromCookieValue(value: string | undefined): TableDensity {
-  return value === "compact" ? "compact" : "normal";
 }

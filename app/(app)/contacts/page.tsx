@@ -4,7 +4,7 @@ import { Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
 import { HubSpotSyncButton } from "./HubSpotSyncButton";
-import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/actions/preferences";
+import { DENSITY_COOKIE, getDensityFromCookieValue } from "@/lib/preferences";
 import {
   createT,
   LOCALE_COOKIE,

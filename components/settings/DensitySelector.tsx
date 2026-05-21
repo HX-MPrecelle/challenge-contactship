@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { AlignJustify, List } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 import { setDensity } from "@/actions/preferences";
-import type { TableDensity } from "@/actions/preferences";
+import type { TableDensity } from "@/lib/preferences";
 
 export function DensitySelector({ current }: { current: TableDensity }) {
   const { t } = useI18n();
