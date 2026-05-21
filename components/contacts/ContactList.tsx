@@ -62,6 +62,20 @@ const LIFECYCLE_FILTER_VALUES = [
 
 const PAGE_SIZE = 10;
 
+/** Returns a deduplicated array of page indices to display in the paginator. */
+function getPaginationPages(current: number, total: number): number[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+
+  const set = new Set<number>();
+  set.add(0);                                           // always first
+  set.add(total - 1);                                   // always last
+  for (let i = Math.max(0, current - 2); i <= Math.min(total - 1, current + 2); i++) {
+    set.add(i);                                         // window around current
+  }
+
+  return Array.from(set).sort((a, b) => a - b);
+}
+
 export function ContactList({
   initialContacts,
   orgId,
@@ -532,29 +546,21 @@ export function ContactList({
             >
               ‹
             </button>
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              // Show first, last, and pages around current
-              const p = totalPages <= 7 ? i :
-                i === 0 ? 0 :
-                i === 6 ? totalPages - 1 :
-                page - 2 + i;
-              const clamped = Math.max(0, Math.min(totalPages - 1, p));
-              return (
-                <button
-                  key={clamped}
-                  type="button"
-                  onClick={() => setPage(clamped)}
-                  className={[
-                    "flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors",
-                    clamped === page
-                      ? "bg-brand text-white"
-                      : "border border-border-default text-text-secondary hover:bg-bg-subtle",
-                  ].join(" ")}
-                >
-                  {clamped + 1}
-                </button>
-              );
-            })}
+            {getPaginationPages(page, totalPages).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                className={[
+                  "flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium transition-colors",
+                  p === page
+                    ? "bg-brand text-white"
+                    : "border border-border-default text-text-secondary hover:bg-bg-subtle",
+                ].join(" ")}
+              >
+                {p + 1}
+              </button>
+            ))}
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
