@@ -1,8 +1,9 @@
 import "server-only";
 import { generateObject } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 
-const MODEL = "openai/gpt-4o-mini";
+const MODEL = openai("gpt-4o-mini");
 
 const FILTER_FIELDS = [
   "first_name",

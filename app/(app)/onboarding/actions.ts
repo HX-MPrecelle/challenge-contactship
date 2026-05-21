@@ -158,19 +158,36 @@ export async function importContacts(
     };
   }
 
+  // Realtime broadcast for progress is best-effort. If the WebSocket can't
+  // open (most common cause of the action hanging), we still want the sync
+  // itself to run — the user just won't see incremental progress until the
+  // action resolves at the end. Hard cap at 5 seconds.
   const channel = admin.channel(`sync:${orgId}`);
-  await new Promise<void>((resolve, reject) => {
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED") resolve();
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        reject(new Error(`Realtime channel ${status}`));
-      }
-    });
-  }).catch((err) => {
-    console.warn("[importContacts] could not open broadcast channel", err);
+  let channelOpen = false;
+  await Promise.race([
+    new Promise<void>((resolve, reject) => {
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          channelOpen = true;
+          resolve();
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          reject(new Error(`Realtime channel ${status}`));
+        }
+      });
+    }),
+    new Promise<void>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("subscribe timeout (5s)")),
+        5000
+      )
+    ),
+  ]).catch((err) => {
+    console.warn("[importContacts] broadcast disabled —", (err as Error).message);
   });
 
   function broadcast(processed: number, total: number, status: "syncing" | "done" | "error") {
+    if (!channelOpen) return;
     channel.send({
       type: "broadcast",
       event: "progress",
@@ -179,36 +196,43 @@ export async function importContacts(
   }
 
   try {
+    console.log(`[importContacts] start orgId=${orgId}`);
     const total = await countContacts(client, {
       lifecycleStage: parsed.data.lifecycleStage,
     });
+    console.log(`[importContacts] total=${total}`);
 
     broadcast(0, total, "syncing");
 
     let processed = 0;
     let conflicts = 0;
     let cursor: string | undefined;
+    let pageIdx = 0;
 
     do {
+      console.log(`[importContacts] fetching page ${++pageIdx} (cursor=${cursor ?? "—"})`);
       const page = await listContactsPage(client, {
         after: cursor,
         limit: 100,
         lifecycleStage: parsed.data.lifecycleStage,
       });
+      console.log(`[importContacts] page ${pageIdx} got ${page.results.length} contacts`);
 
-      // Generate embeddings for the whole page in one OpenAI call. Returns
-      // null if OPENAI_API_KEY isn't set, in which case the column stays
-      // null and chat backfills lazily on first read.
       const embedInputs = page.results.map((c) => {
         const normalized = normalizeHubSpotContact(c);
         return { key: c.id, text: buildContactText(normalized) };
       });
+      const embedStart = Date.now();
       const embeddings = await embedContacts(embedInputs);
+      console.log(
+        `[importContacts] embedded ${embedInputs.length} (${Date.now() - embedStart}ms${embeddings ? "" : ", skipped"})`
+      );
       const byKey = new Map<string, number[]>();
       if (embeddings) {
         for (const r of embeddings) byKey.set(r.key, r.embedding);
       }
 
+      const upsertStart = Date.now();
       for (const contact of page.results) {
         try {
           const outcome = await upsertContactFromHubSpot(admin, orgId, contact, {
@@ -220,6 +244,9 @@ export async function importContacts(
         }
         processed++;
       }
+      console.log(
+        `[importContacts] upserted page ${pageIdx} in ${Date.now() - upsertStart}ms (processed=${processed})`
+      );
 
       broadcast(processed, total, "syncing");
 
@@ -232,15 +259,16 @@ export async function importContacts(
       .eq("org_id", orgId);
 
     broadcast(processed, total, "done");
-    await admin.removeChannel(channel);
+    if (channelOpen) await admin.removeChannel(channel);
 
     revalidatePath("/contacts");
 
+    console.log(`[importContacts] done — processed=${processed} conflicts=${conflicts}`);
     return { success: true, data: { imported: processed, conflicts } };
   } catch (err) {
     if (err instanceof HubSpotAuthError) {
       broadcast(0, 0, "error");
-      await admin.removeChannel(channel);
+      if (channelOpen) await admin.removeChannel(channel);
       return {
         success: false,
         error: "La conexión con HubSpot expiró. Reconectá tu cuenta.",
@@ -249,7 +277,7 @@ export async function importContacts(
     }
     console.error("[importContacts]", err);
     broadcast(0, 0, "error");
-    await admin.removeChannel(channel);
+    if (channelOpen) await admin.removeChannel(channel);
     return {
       success: false,
       error: "Falló la importación. Reintentá en unos segundos.",

@@ -1,9 +1,10 @@
 import "server-only";
 import { embed } from "ai";
+import { openai } from "@ai-sdk/openai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
-const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+const EMBEDDING_MODEL = openai.textEmbeddingModel("text-embedding-3-small");
 const MATCH_THRESHOLD = 0.5;
 const MATCH_COUNT = 20;
 

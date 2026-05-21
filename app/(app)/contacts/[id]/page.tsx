@@ -5,6 +5,7 @@ import { AiInsightsPanel } from "@/components/contacts/AiInsightsPanel";
 import { ConflictBanner } from "@/components/contacts/ConflictBanner";
 import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactTimeline } from "@/components/contacts/ContactTimeline";
+import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
 import { createClient } from "@/lib/supabase/server";
 
@@ -148,6 +149,8 @@ export default async function ContactDetailPage({ params }: Props) {
           </section>
 
           <AiInsightsPanel contactId={contact.id} />
+
+          <SimilarContactsPanel contactId={contact.id} />
         </aside>
       </div>
     </main>

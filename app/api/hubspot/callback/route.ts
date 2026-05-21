@@ -4,6 +4,7 @@ import {
   exchangeCodeForTokens,
   inspectAccessToken,
   storeTokenInVault,
+  updateTokenInVault,
 } from "@/lib/hubspot/oauth";
 
 const STATE_COOKIE = "hs_oauth_state";
@@ -58,18 +59,44 @@ export async function GET(request: NextRequest) {
     );
     const info = await inspectAccessToken(tokens.access_token);
 
-    const [accessSecretId, refreshSecretId] = await Promise.all([
-      storeTokenInVault(
-        tokens.access_token,
-        `hubspot:access:org:${orgId}`
-      ),
-      storeTokenInVault(
-        tokens.refresh_token,
-        `hubspot:refresh:org:${orgId}`
-      ),
-    ]);
-
     const admin = createServiceClient();
+
+    // Re-OAuth flow: if a connection already exists, rotate the values
+    // behind its existing Vault secret IDs instead of minting new ones.
+    // vault.secrets has a UNIQUE constraint on name, so create_secret with
+    // the same label fails the second time around.
+    const { data: existingConnection } = await admin
+      .from("hubspot_connections")
+      .select("access_token_secret, refresh_token_secret")
+      .eq("org_id", orgId)
+      .maybeSingle();
+
+    let accessSecretId: string;
+    let refreshSecretId: string;
+
+    if (
+      existingConnection?.access_token_secret &&
+      existingConnection.refresh_token_secret
+    ) {
+      await Promise.all([
+        updateTokenInVault(
+          existingConnection.access_token_secret,
+          tokens.access_token
+        ),
+        updateTokenInVault(
+          existingConnection.refresh_token_secret,
+          tokens.refresh_token
+        ),
+      ]);
+      accessSecretId = existingConnection.access_token_secret;
+      refreshSecretId = existingConnection.refresh_token_secret;
+    } else {
+      [accessSecretId, refreshSecretId] = await Promise.all([
+        storeTokenInVault(tokens.access_token, `hubspot:access:org:${orgId}`),
+        storeTokenInVault(tokens.refresh_token, `hubspot:refresh:org:${orgId}`),
+      ]);
+    }
+
     const { error: upsertError } = await admin
       .from("hubspot_connections")
       .upsert(

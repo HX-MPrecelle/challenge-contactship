@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { ContactsChat } from "@/components/chat/ContactsChat";
 import { createClient } from "@/lib/supabase/server";
+import { ContactsChat } from "@/components/chat/ContactsChat";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +16,8 @@ export default async function ChatPage() {
   }
 
   return (
-    <main className="mx-auto h-screen max-w-3xl px-6 py-8">
+    <div className="flex h-screen w-full overflow-hidden">
       <ContactsChat />
-    </main>
+    </div>
   );
 }

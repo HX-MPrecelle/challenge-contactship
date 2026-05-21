@@ -110,6 +110,241 @@ export async function updateContact(
   }
 }
 
+const CONFLICT_FIELDS = [
+  "first_name",
+  "last_name",
+  "email",
+  "phone",
+  "company",
+  "job_title",
+] as const;
+export type ConflictField = (typeof CONFLICT_FIELDS)[number];
+
+const HUBSPOT_PROP_MAP: Record<ConflictField, string> = {
+  first_name: "firstname",
+  last_name: "lastname",
+  email: "email",
+  phone: "phone",
+  company: "company",
+  job_title: "jobtitle",
+};
+
+export type ConflictDiff = {
+  contactId: string;
+  hubspotId: string;
+  detectedAt: string | null;
+  fields: {
+    field: ConflictField;
+    label: string;
+    local: string | null;
+    hubspot: string | null;
+    differs: boolean;
+  }[];
+};
+
+const FIELD_LABEL: Record<ConflictField, string> = {
+  first_name: "Nombre",
+  last_name: "Apellido",
+  email: "Email",
+  phone: "Teléfono",
+  company: "Empresa",
+  job_title: "Cargo",
+};
+
+const GetConflictDiffSchema = z.object({
+  id: z.string().uuid(),
+});
+
+/**
+ * Build the side-by-side diff payload for the conflict resolution UI.
+ *
+ * "Local" comes from the contacts row as it currently sits in our DB.
+ * "HubSpot" comes from the most recent sync_events row of type 'conflict'
+ * for this contact — that captures HubSpot's incoming state at the moment
+ * we rejected the merge. We deliberately don't re-fetch from HubSpot here:
+ * the user is resolving the specific conflict that was flagged, not
+ * whatever might be in HubSpot right now.
+ */
+export async function getConflictDiff(
+  input: z.infer<typeof GetConflictDiffSchema>
+): Promise<ActionResult<ConflictDiff>> {
+  const parsed = GetConflictDiffSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Datos inválidos", code: "VALIDATION_ERROR" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  const { data: contact, error: contactError } = await supabase
+    .from("contacts")
+    .select("id, hubspot_id, first_name, last_name, email, phone, company, job_title")
+    .eq("id", parsed.data.id)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (contactError || !contact) {
+    return { success: false, error: "Contacto no encontrado", code: "NOT_FOUND" };
+  }
+
+  const { data: conflictEvent } = await supabase
+    .from("sync_events")
+    .select("after_state, created_at")
+    .eq("org_id", orgId)
+    .eq("contact_id", contact.id)
+    .eq("event_type", "conflict")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const hubspotState = (conflictEvent?.after_state ?? {}) as Record<
+    string,
+    string | null | undefined
+  >;
+
+  const fields = CONFLICT_FIELDS.map((field) => {
+    const local = (contact[field] ?? null) as string | null;
+    const hubspot = (hubspotState[field] ?? null) as string | null;
+    return {
+      field,
+      label: FIELD_LABEL[field],
+      local,
+      hubspot,
+      differs: (local ?? "") !== (hubspot ?? ""),
+    };
+  });
+
+  return {
+    success: true,
+    data: {
+      contactId: contact.id,
+      hubspotId: contact.hubspot_id,
+      detectedAt: conflictEvent?.created_at ?? null,
+      fields,
+    },
+  };
+}
+
+const FieldChoiceSchema = z.object({
+  field: z.enum(CONFLICT_FIELDS),
+  source: z.enum(["local", "hubspot"]),
+});
+
+const ResolveConflictMergeSchema = z.object({
+  id: z.string().uuid(),
+  choices: z.array(FieldChoiceSchema).min(1).max(CONFLICT_FIELDS.length),
+});
+
+/**
+ * Cherry-pick which side wins for each field, push the merged record to
+ * HubSpot, then pull it back to canonicalize. Net effect: sync_status flips
+ * back to 'synced' with whatever the merged values were.
+ *
+ * The diff payload (from getConflictDiff) is the source of truth for the
+ * HubSpot side; we don't re-read it here to keep the resolution stable —
+ * if HubSpot has moved on since the diff was rendered, the next inbound
+ * sync will produce a fresh conflict and the user resolves that one.
+ */
+export async function resolveConflictMerge(
+  input: z.infer<typeof ResolveConflictMergeSchema>
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = ResolveConflictMergeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Datos inválidos", code: "VALIDATION_ERROR" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  const { data: row, error: lookupError } = await supabase
+    .from("contacts")
+    .select("id, hubspot_id, first_name, last_name, email, phone, company, job_title")
+    .eq("id", parsed.data.id)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (lookupError || !row) {
+    return { success: false, error: "Contacto no encontrado", code: "NOT_FOUND" };
+  }
+
+  const adminEarly = createServiceClient();
+  const { data: conflictEvent } = await adminEarly
+    .from("sync_events")
+    .select("after_state")
+    .eq("org_id", orgId)
+    .eq("contact_id", row.id)
+    .eq("event_type", "conflict")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const hubspotState = (conflictEvent?.after_state ?? {}) as Record<
+    string,
+    string | null | undefined
+  >;
+
+  const choicesByField = new Map(
+    parsed.data.choices.map((c) => [c.field, c.source])
+  );
+
+  const mergedProps: Record<string, string> = {};
+  for (const field of CONFLICT_FIELDS) {
+    const source = choicesByField.get(field) ?? "local";
+    const value =
+      source === "hubspot"
+        ? (hubspotState[field] ?? null)
+        : (row[field] ?? null);
+    mergedProps[HUBSPOT_PROP_MAP[field]] = value ?? "";
+  }
+
+  try {
+    const client = await getHubSpotClient(orgId);
+    await updateHubSpotContact(client, row.hubspot_id, mergedProps);
+
+    const fresh = await getContact(client, row.hubspot_id);
+    if (!fresh) {
+      return { success: false, error: "HubSpot devolvió 404", code: "HS_GONE" };
+    }
+
+    const admin = createServiceClient();
+    const text = buildContactText(normalizeHubSpotContact(fresh));
+    const embeddings = await embedContacts([{ key: fresh.id, text }]);
+    await upsertContactFromHubSpot(admin, orgId, fresh, {
+      embedding: embeddings?.[0]?.embedding,
+      direction: "local_to_hubspot",
+    });
+
+    await admin
+      .from("contacts")
+      .update({ sync_status: "synced" })
+      .eq("id", row.id);
+
+    revalidatePath(`/contacts/${row.id}`);
+    revalidatePath("/contacts");
+
+    return { success: true, data: { id: row.id } };
+  } catch (err) {
+    console.error("[resolveConflictMerge]", err);
+    return {
+      success: false,
+      error: "No pudimos guardar el merge",
+      code: "INTERNAL_ERROR",
+    };
+  }
+}
+
 const ResolveConflictSchema = z.object({
   id: z.string().uuid(),
   resolution: z.enum(["keep_local", "use_hubspot"]),

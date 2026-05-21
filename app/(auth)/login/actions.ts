@@ -49,6 +49,11 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
     try {
       const bootstrap = await bootstrapOrgForUser(data.user);
       onboardingComplete = bootstrap.onboardingComplete;
+      // Force a token rotation so the new JWT carries user_metadata.org_id
+      // — RLS reads from the JWT, not from the auth.users row, so the
+      // session needs to be re-issued for /contacts and /settings reads
+      // to return any rows.
+      await supabase.auth.refreshSession();
     } catch (err) {
       console.error("[signIn] bootstrap failed", err);
       return {
@@ -60,7 +65,7 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 
   return {
     success: true,
-    redirectTo: onboardingComplete ? "/contacts" : "/onboarding",
+    redirectTo: onboardingComplete ? "/dashboard" : "/onboarding",
   };
 }
 
@@ -107,6 +112,12 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   // them straight into the onboarding stepper.
   try {
     await bootstrapOrgForUser(data.user);
+    // The session JWT was issued before bootstrap ran, so it has no
+    // user_metadata.org_id. RLS policies on every table key off
+    // `(auth.jwt() -> 'user_metadata' ->> 'org_id')::uuid`, so without
+    // this refresh /contacts and /settings would return empty even
+    // though the data is sitting there under the service role.
+    await supabase.auth.refreshSession();
   } catch (err) {
     console.error("[signUp] bootstrap failed", err);
     return {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { BarChart3, Loader2, Search, Sparkles, X } from "lucide-react";
+import { BarChart3, Loader2, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,8 @@ export function ContactList({
   );
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [isBulking, startBulk] = useTransition();
 
   useEffect(() => {
     const supabase = createClient();
@@ -163,6 +165,61 @@ export function ContactList({
         query: q,
       });
       setQuery("");
+    });
+  }
+
+  function toggleRow(id: string, e: React.MouseEvent) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (e.shiftKey && prev.size > 0) {
+        // Shift+click: select range between last selected and this
+        const ids = filtered.map((c) => c.id);
+        const lastSelected = ids.findIndex((i) => prev.has(i));
+        const current = ids.indexOf(id);
+        if (lastSelected !== -1) {
+          const sorted = [lastSelected, current].sort((x, y) => x - y) as [number, number];
+          ids.slice(sorted[0], sorted[1] + 1).forEach((i) => next.add(i));
+          return next;
+        }
+      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function bulkResync() {
+    const ids = [...selected];
+    startBulk(async () => {
+      const { toast: t } = await import("sonner");
+      // Mark selected contacts as pending — the cron will pick them up
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("contacts")
+        .update({ sync_status: "pending" })
+        .in("id", ids)
+        .eq("org_id", orgId);
+      if (error) { t.error(error.message); return; }
+      t.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} marcado${ids.length === 1 ? "" : "s"} para re-sync`);
+      setSelected(new Set());
+    });
+  }
+
+  function bulkArchive() {
+    const ids = [...selected];
+    startBulk(async () => {
+      const { toast: t } = await import("sonner");
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("contacts")
+        .update({ is_archived: true })
+        .in("id", ids)
+        .eq("org_id", orgId);
+      if (error) { t.error(error.message); return; }
+      t.success(`${ids.length} contacto${ids.length === 1 ? "" : "s"} archivado${ids.length === 1 ? "" : "s"}`);
+      setSelected(new Set());
     });
   }
 
@@ -268,10 +325,49 @@ export function ContactList({
         />
       )}
 
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border-strong bg-bg-surface px-4 py-2.5 shadow-cs-sm">
+          <span className="text-sm font-medium text-text-primary">
+            {selected.size} seleccionado{selected.size === 1 ? "" : "s"}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="secondary" onClick={bulkResync} disabled={isBulking}>
+              <RefreshCw size={12} />
+              Re-sync
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={bulkArchive}
+              disabled={isBulking}
+              className="text-error hover:bg-error-subtle hover:text-error"
+            >
+              <Trash2 size={12} />
+              Archivar
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+              <X size={12} />
+              Deseleccionar
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-xl border border-border-default bg-bg-surface">
         <table className="w-full text-sm">
           <thead className="border-b border-border-default bg-bg-subtle">
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+              <th className="w-10 px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-border-strong accent-brand"
+                  checked={selected.size === filtered.length && filtered.length > 0}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelected(new Set(filtered.map((c) => c.id)));
+                    else setSelected(new Set());
+                  }}
+                />
+              </th>
               <th className="px-4 py-2.5">Nombre</th>
               <th className="px-4 py-2.5">Email</th>
               <th className="px-4 py-2.5">Empresa</th>
@@ -299,8 +395,17 @@ export function ContactList({
               return (
                 <tr
                   key={c.id}
-                  className="transition-colors hover:bg-bg-subtle"
+                  className={`transition-colors hover:bg-bg-subtle ${selected.has(c.id) ? "bg-brand-subtle/30" : ""}`}
                 >
+                  <td className="w-10 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-border-strong accent-brand"
+                      checked={selected.has(c.id)}
+                      onChange={() => {}}
+                      onClick={(e) => toggleRow(c.id, e)}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/contacts/${c.id}`}

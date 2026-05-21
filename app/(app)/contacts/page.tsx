@@ -2,10 +2,25 @@ import { redirect } from "next/navigation";
 import { Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
-
 export const dynamic = "force-dynamic";
 
-export default async function ContactsPage() {
+type Props = {
+  searchParams: Promise<{ status?: string }>;
+};
+
+const VALID_STATUSES = ["synced", "pending", "conflict", "error"] as const;
+type SyncStatus = (typeof VALID_STATUSES)[number];
+
+function parseStatus(input: string | undefined): SyncStatus | null {
+  if (!input) return null;
+  return (VALID_STATUSES as readonly string[]).includes(input)
+    ? (input as SyncStatus)
+    : null;
+}
+
+export default async function ContactsPage({ searchParams }: Props) {
+  const { status } = await searchParams;
+  const initialStatusFilter = parseStatus(status);
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,7 +64,11 @@ export default async function ContactsPage() {
         </div>
       </header>
 
-      <ContactList initialContacts={contacts ?? []} orgId={orgId} />
+      <ContactList
+        initialContacts={contacts ?? []}
+        orgId={orgId}
+        initialStatusFilter={initialStatusFilter}
+      />
     </main>
   );
 }

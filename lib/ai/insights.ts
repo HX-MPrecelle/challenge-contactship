@@ -1,11 +1,12 @@
 import "server-only";
 import { generateObject } from "ai";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 const INSIGHTS_TTL_MS = 24 * 60 * 60 * 1000;
-const MODEL = "openai/gpt-4o-mini";
+const MODEL = openai("gpt-4o-mini");
 
 type AdminClient = SupabaseClient<Database>;
 

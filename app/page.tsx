@@ -1,8 +1,24 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    if (user.user_metadata?.onboarding_complete) {
+      redirect("/dashboard");
+    }
+    redirect("/onboarding");
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <div className="flex w-full max-w-md flex-col items-center gap-8 text-center">

@@ -1,0 +1,274 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─────────────────────────────────────────────────────────────────────
+   ContactShip — Design System v2.0
+   Light-first, with .dark overlay. Token names preserved 1:1 from v1
+   for drop-in replacement; only VALUES change.
+
+   v1 → v2 rationale:
+   ─ Dark-only → light-first. Dark stays available via `.dark`.
+   ─ Indigo neon (#6366F1) → Cobalt (#2348C9). Same family, less "AI demo".
+   ─ Pure-white surfaces with warm-cool neutral grays (slight cool tint,
+     saturation <0.02). Hairline borders (#E6E6E4) do the heavy lifting.
+   ─ Shadows reduced to near-imperceptible elevation; rely on tonal shifts.
+   ───────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* ── Backgrounds ─────────────────────────────────────────────────── */
+  --bg-base:        #FBFBFA;   /* app shell */
+  --bg-surface:     #FFFFFF;   /* cards, panels, sidebars */
+  --bg-elevated:    #FFFFFF;   /* dropdowns, tooltips, modals */
+  --bg-subtle:      #F5F5F4;   /* hover states, zebra rows */
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
+  --border-default: #E6E6E4;
+  --border-strong:  #D4D4D2;
+  --border-focus:   #2348C9;
+
+  /* ── Brand (Cobalt) ──────────────────────────────────────────────── */
+  --brand:          #2348C9;
+  --brand-hover:    #1B3AAF;
+  --brand-subtle:   #EEF2FF;
+  --brand-on-subtle: #2348C9;   /* readable text/icon on --brand-subtle */
+  --brand-ring:     rgba(35, 72, 201, 0.18);
+
+  /* ── Texto ───────────────────────────────────────────────────────── */
+  --text-primary:   #0F1115;
+  --text-secondary: #5B5F66;
+  --text-muted:     #9098A0;
+  --text-inverse:   #FFFFFF;
+
+  /* ── Estados semánticos ──────────────────────────────────────────── */
+  --success:        #0A7C5A;
+  --success-subtle: #ECFBF4;
+  --warning:        #A8530B;
+  --warning-subtle: #FDF3E7;
+  --error:          #B42318;
+  --error-subtle:   #FEF3F2;
+  --info:           #1849A9;
+  --info-subtle:    #EFF4FF;
+
+  /* ── Sync status ─────────────────────────────────────────────────── */
+  --sync-synced:    var(--success);
+  --sync-pending:   var(--warning);
+  --sync-conflict:  var(--error);
+  --sync-error:     var(--error);
+
+  /* ── Sombras (light) ─────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(15,17,21,0.04), 0 0 0 1px rgba(15,17,21,0.03);
+  --shadow-md: 0 2px 6px rgba(15,17,21,0.06), 0 1px 2px rgba(15,17,21,0.04);
+  --shadow-lg: 0 12px 32px rgba(15,17,21,0.08), 0 2px 6px rgba(15,17,21,0.04);
+
+  /* ── shadcn semantic slots (mapped 1:1 a nuestros tokens) ────────── */
+  --background:           var(--bg-base);
+  --foreground:           var(--text-primary);
+  --card:                 var(--bg-surface);
+  --card-foreground:      var(--text-primary);
+  --popover:              var(--bg-elevated);
+  --popover-foreground:   var(--text-primary);
+  --primary:              var(--brand);
+  --primary-foreground:   #FFFFFF;
+  --secondary:            var(--bg-subtle);
+  --secondary-foreground: var(--text-primary);
+  --muted:                var(--bg-subtle);
+  --muted-foreground:     var(--text-secondary);
+  --accent:               var(--bg-subtle);
+  --accent-foreground:    var(--text-primary);
+  --destructive:          var(--error);
+  --border:               var(--border-default);
+  --input:                var(--bg-surface);
+  --ring:                 var(--border-focus);
+
+  /* Sidebar slots */
+  --sidebar:                       var(--bg-surface);
+  --sidebar-foreground:            var(--text-secondary);
+  --sidebar-primary:               var(--brand);
+  --sidebar-primary-foreground:    #FFFFFF;
+  --sidebar-accent:                var(--bg-subtle);
+  --sidebar-accent-foreground:     var(--text-primary);
+  --sidebar-border:                var(--border-default);
+  --sidebar-ring:                  var(--border-focus);
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  /* ── Backgrounds (dark) ──────────────────────────────────────────── */
+  --bg-base:        #0B0D11;
+  --bg-surface:     #11141A;
+  --bg-elevated:    #181C24;
+  --bg-subtle:      #1E232C;
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
+  --border-default: #22262F;
+  --border-strong:  #30353F;
+  --border-focus:   #7B92FF;
+
+  /* ── Brand (Cobalt — lifted para dark) ───────────────────────────── */
+  --brand:          #7B92FF;
+  --brand-hover:    #94A7FF;
+  --brand-subtle:   #1A1F36;
+  --brand-on-subtle: #A5B4FF;
+  --brand-ring:     rgba(123, 146, 255, 0.22);
+
+  /* ── Texto ───────────────────────────────────────────────────────── */
+  --text-primary:   #F2F3F5;
+  --text-secondary: #9CA3AF;
+  --text-muted:     #5A6068;
+  --text-inverse:   #0F1115;
+
+  /* ── Estados semánticos ──────────────────────────────────────────── */
+  --success:        #3FCB9A;
+  --success-subtle: #0E2620;
+  --warning:        #F5A056;
+  --warning-subtle: #2A1A0A;
+  --error:          #F87171;
+  --error-subtle:   #2A1313;
+  --info:           #7B92FF;
+  --info-subtle:    #1A1F36;
+
+  /* ── Sombras (dark) ──────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04);
+  --shadow-lg: 0 16px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-bg-base:        var(--bg-base);
+  --color-bg-surface:     var(--bg-surface);
+  --color-bg-elevated:    var(--bg-elevated);
+  --color-bg-subtle:      var(--bg-subtle);
+
+  --color-border-default: var(--border-default);
+  --color-border-strong:  var(--border-strong);
+  --color-border-focus:   var(--border-focus);
+
+  --color-brand:           var(--brand);
+  --color-brand-hover:     var(--brand-hover);
+  --color-brand-subtle:    var(--brand-subtle);
+  --color-brand-on-subtle: var(--brand-on-subtle);
+
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
+  --color-text-inverse:   var(--text-inverse);
+
+  --color-success:        var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning:        var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-error:          var(--error);
+  --color-error-subtle:   var(--error-subtle);
+  --color-info:           var(--info);
+  --color-info-subtle:    var(--info-subtle);
+
+  --color-sync-synced:    var(--sync-synced);
+  --color-sync-pending:   var(--sync-pending);
+  --color-sync-conflict:  var(--sync-conflict);
+  --color-sync-error:     var(--sync-error);
+
+  /* shadcn semantic slots */
+  --color-card:                  var(--card);
+  --color-card-foreground:       var(--card-foreground);
+  --color-popover:               var(--popover);
+  --color-popover-foreground:    var(--popover-foreground);
+  --color-primary:               var(--primary);
+  --color-primary-foreground:    var(--primary-foreground);
+  --color-secondary:             var(--secondary);
+  --color-secondary-foreground:  var(--secondary-foreground);
+  --color-muted:                 var(--muted);
+  --color-muted-foreground:      var(--muted-foreground);
+  --color-accent:                var(--accent);
+  --color-accent-foreground:     var(--accent-foreground);
+  --color-destructive:           var(--destructive);
+  --color-border:                var(--border);
+  --color-input:                 var(--input);
+  --color-ring:                  var(--ring);
+
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+
+  /* Fonts (variables injected by next/font in layout.tsx) */
+  --font-sans:    var(--font-geist-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono:    var(--font-geist-mono), "JetBrains Mono", ui-monospace, monospace;
+  --font-heading: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* Type scale (v2 — same sizes, refined line-heights for tighter density) */
+  --text-xs:                0.6875rem;   /* 11px — caption, badges */
+  --text-xs--line-height:   1.4;
+  --text-sm:                0.8125rem;   /* 13px — secondary, metadata */
+  --text-sm--line-height:   1.5;
+  --text-base:              0.875rem;    /* 14px — body */
+  --text-base--line-height: 1.55;
+  --text-md:                0.9375rem;   /* 15px — lead text */
+  --text-md--line-height:   1.5;
+  --text-lg:                1.125rem;    /* 18px — H3 */
+  --text-lg--line-height:   1.4;
+  --text-xl:                1.375rem;    /* 22px — H2 */
+  --text-xl--line-height:   1.3;
+  --text-2xl:               1.75rem;     /* 28px — H1 */
+  --text-2xl--line-height:  1.15;
+  --text-3xl:               2.25rem;     /* 36px — display */
+  --text-3xl--line-height:  1.1;
+
+  /* Radius scale */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  /* Shadows como Tailwind utilities */
+  --shadow-cs-sm: var(--shadow-sm);
+  --shadow-cs-md: var(--shadow-md);
+  --shadow-cs-lg: var(--shadow-lg);
+
+  /* Animations */
+  --animate-shimmer:   shimmer 1.5s infinite;
+  --animate-pulse-dot: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.85); }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+    @apply font-sans;
+    font-feature-settings: "cv11", "ss01", "ss03"; /* Geist's calmer alts */
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    letter-spacing: -0.005em;
+  }
+  /* Tabular figures for data tables — keeps numeric columns aligned */
+  .font-mono, code, kbd, [data-tabular] {
+    font-variant-numeric: tabular-nums;
+  }
+}
