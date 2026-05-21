@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Loader2, Search, Sparkles, X } from "lucide-react";
+import { BarChart3, Loader2, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar } from "@/components/ui/avatar";
+import { FilterSummaryDialog } from "@/components/contacts/FilterSummaryDialog";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
 import { naturalLanguageSearch } from "@/actions/ai";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
+
+type SyncStatus = "synced" | "pending" | "conflict" | "error";
 
 type ContactRow = Pick<
   Database["public"]["Tables"]["contacts"]["Row"],
@@ -36,17 +40,34 @@ type AiFilter = {
     value: string;
   }[];
   explanation: string;
+  query: string;
 };
 
 type Props = {
   initialContacts: ContactRow[];
   orgId: string;
+  initialStatusFilter?: SyncStatus | null;
 };
 
-export function ContactList({ initialContacts, orgId }: Props) {
+const STATUS_LABEL: Record<SyncStatus, string> = {
+  synced: "sincronizados",
+  pending: "pendientes",
+  conflict: "en conflicto",
+  error: "con error",
+};
+
+export function ContactList({
+  initialContacts,
+  orgId,
+  initialStatusFilter,
+}: Props) {
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
   const [query, setQuery] = useState("");
   const [aiFilter, setAiFilter] = useState<AiFilter | null>(null);
+  const [statusFilter, setStatusFilter] = useState<SyncStatus | null>(
+    initialStatusFilter ?? null
+  );
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
 
   useEffect(() => {
@@ -93,6 +114,9 @@ export function ContactList({ initialContacts, orgId }: Props) {
 
   const filtered = useMemo(() => {
     let result = contacts;
+    if (statusFilter) {
+      result = result.filter((c) => c.sync_status === statusFilter);
+    }
     if (aiFilter) {
       result = result.filter((c) =>
         aiFilter.filters.every((f) => matchesFilter(c, f))
@@ -113,7 +137,7 @@ export function ContactList({ initialContacts, orgId }: Props) {
       });
     }
     return result;
-  }, [contacts, query, aiFilter]);
+  }, [contacts, query, aiFilter, statusFilter]);
 
   function runAiSearch() {
     const q = query.trim();
@@ -136,6 +160,7 @@ export function ContactList({ initialContacts, orgId }: Props) {
       setAiFilter({
         filters: result.data.filters,
         explanation: result.data.explanation,
+        query: q,
       });
       setQuery("");
     });
@@ -176,10 +201,31 @@ export function ContactList({ initialContacts, orgId }: Props) {
         </Button>
       </div>
 
+      {statusFilter && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-subtle px-4 py-2.5 text-sm">
+          <span className="text-text-secondary">
+            Mostrando solo{" "}
+            <span className="font-medium text-text-primary">
+              contactos {STATUS_LABEL[statusFilter]}
+            </span>
+            .
+          </span>
+          <button
+            type="button"
+            onClick={() => setStatusFilter(null)}
+            className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary"
+            aria-label="Quitar filtro de estado"
+          >
+            <X size={14} />
+            <span>Ver todos</span>
+          </button>
+        </div>
+      )}
+
       {aiFilter && (
         <div className="flex items-start justify-between gap-3 rounded-lg border border-brand/40 bg-brand-subtle px-4 py-2.5">
           <div className="flex items-start gap-2 text-sm">
-            <Sparkles size={14} className="mt-0.5 shrink-0 text-brand" />
+            <Sparkles size={14} className="mt-0.5 shrink-0 text-brand-on-subtle" />
             <div className="flex flex-col gap-0.5">
               <span className="font-medium text-text-primary">
                 Búsqueda con IA aplicada
@@ -189,21 +235,43 @@ export function ContactList({ initialContacts, orgId }: Props) {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setAiFilter(null)}
-            className="text-xs text-text-secondary hover:text-text-primary"
-            aria-label="Limpiar filtro"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setSummaryOpen(true)}
+              disabled={filtered.length === 0}
+              title="Análisis IA sobre los contactos filtrados"
+            >
+              <BarChart3 size={12} />
+              Resumir {filtered.length}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setAiFilter(null)}
+              className="text-xs text-text-secondary hover:text-text-primary"
+              aria-label="Limpiar filtro"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
+      )}
+
+      {aiFilter && (
+        <FilterSummaryDialog
+          open={summaryOpen}
+          onOpenChange={setSummaryOpen}
+          query={aiFilter.query}
+          filters={aiFilter.filters}
+        />
       )}
 
       <div className="overflow-hidden rounded-xl border border-border-default bg-bg-surface">
         <table className="w-full text-sm">
-          <thead className="bg-bg-elevated">
-            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-secondary">
+          <thead className="border-b border-border-default bg-bg-subtle">
+            <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
               <th className="px-4 py-2.5">Nombre</th>
               <th className="px-4 py-2.5">Email</th>
               <th className="px-4 py-2.5">Empresa</th>
@@ -212,12 +280,12 @@ export function ContactList({ initialContacts, orgId }: Props) {
               <th className="px-4 py-2.5">Sync</th>
             </tr>
           </thead>
-          <tbody className="text-text-primary">
+          <tbody className="divide-y divide-border-default text-text-primary">
             {filtered.length === 0 && (
               <tr>
                 <td
                   colSpan={6}
-                  className="px-4 py-8 text-center text-sm text-text-muted"
+                  className="px-4 py-10 text-center text-sm text-text-muted"
                 >
                   {contacts.length === 0
                     ? "Sin contactos sincronizados todavía."
@@ -225,47 +293,54 @@ export function ContactList({ initialContacts, orgId }: Props) {
                 </td>
               </tr>
             )}
-            {filtered.map((c) => (
-              <tr
-                key={c.id}
-                className="cursor-pointer border-t border-border-default transition-colors hover:bg-bg-subtle"
-              >
-                <td className="px-4 py-3 font-medium">
-                  <Link
-                    href={`/contacts/${c.id}`}
-                    className="block w-full text-text-primary"
-                  >
-                    {[c.first_name, c.last_name].filter(Boolean).join(" ") ||
-                      "—"}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-text-secondary">
-                  <Link href={`/contacts/${c.id}`} className="block w-full">
-                    {c.email ?? "—"}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-text-secondary">
-                  <Link href={`/contacts/${c.id}`} className="block w-full">
-                    {c.company ?? "—"}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-text-secondary">
-                  <Link href={`/contacts/${c.id}`} className="block w-full">
-                    {c.job_title ?? "—"}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-text-secondary">
-                  <Link href={`/contacts/${c.id}`} className="block w-full">
-                    {c.lifecycle_stage ?? "—"}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/contacts/${c.id}`}>
-                    <SyncStatusBadge status={c.sync_status} />
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((c) => {
+              const fullName =
+                [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
+              return (
+                <tr
+                  key={c.id}
+                  className="transition-colors hover:bg-bg-subtle"
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/contacts/${c.id}`}
+                      className="flex items-center gap-2.5 text-text-primary"
+                    >
+                      <Avatar
+                        size={26}
+                        name={fullName === "—" ? "?" : fullName}
+                      />
+                      <span className="font-medium">{fullName}</span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/contacts/${c.id}`} className="block w-full font-mono text-xs text-text-muted">
+                      {c.email ?? "—"}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                      {c.company ?? "—"}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                      {c.job_title ?? "—"}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    <Link href={`/contacts/${c.id}`} className="block w-full">
+                      {c.lifecycle_stage ?? "—"}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/contacts/${c.id}`}>
+                      <SyncStatusBadge status={c.sync_status} />
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

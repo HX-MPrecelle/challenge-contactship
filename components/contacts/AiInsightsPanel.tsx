@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { AlertTriangle, Loader2, RefreshCw, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { EmailDraftDialog } from "@/components/contacts/EmailDraftDialog";
 import { generateInsightsAction } from "@/actions/ai";
 
 type Insights = {
@@ -47,15 +48,15 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
     <section className="flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-5">
       <header className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-subtle text-brand">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-subtle text-brand-on-subtle">
             <Sparkles size={14} />
           </div>
           <div className="flex flex-col">
-            <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-text-secondary">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
               AI Insights
             </h2>
             {generatedAt && (
-              <span className="text-[10px] text-text-muted">
+              <span className="text-[10px] font-mono text-text-muted">
                 {fromCache ? "Cache" : "Recién generado"} ·{" "}
                 {new Date(generatedAt).toLocaleString("es-AR", {
                   dateStyle: "short",
@@ -107,8 +108,24 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
               {insights.riskSignal}
             </Card>
           )}
+
+          <EmailDraftDialog contactId={contactId} />
         </div>
-      ) : null}
+      ) : (
+        /* Inline empty — not enough activity to generate insights yet */
+        <div className="flex items-center gap-3 rounded-lg border border-dashed border-border-strong px-4 py-3">
+          <Sparkles size={16} className="shrink-0 text-text-muted" />
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="text-sm text-text-secondary">Sin insights todavía</span>
+            <span className="text-xs text-text-muted">
+              No hay suficiente actividad para generar un análisis.
+            </span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => load(true)} disabled={isPending}>
+            Generar ahora
+          </Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -123,16 +140,16 @@ function LeadScoreCard({ score }: { score: number }) {
           ? { text: "text-warning", bar: "bg-warning", label: "Cool" }
           : { text: "text-error", bar: "bg-error", label: "Cold" };
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-bg-elevated px-3.5 py-3">
+    <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-bg-subtle px-3.5 py-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-text-secondary">
           Lead score
         </span>
-        <span className={`font-heading text-2xl font-semibold ${tone.text}`}>
+        <span className={`text-3xl font-semibold tabular-nums ${tone.text}`}>
           {score}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-bg-subtle">
+      <div className="h-1.5 overflow-hidden rounded-full bg-border-default">
         <div
           className={`h-full rounded-full ${tone.bar} transition-all`}
           style={{ width: `${Math.max(2, score)}%` }}
@@ -161,9 +178,13 @@ function Card({
       ? "border-error/40 bg-error-subtle"
       : highlight
         ? "border-brand/40 bg-brand-subtle"
-        : "border-border-default bg-bg-elevated";
+        : "border-border-default bg-bg-subtle";
   const labelClass =
-    tone === "error" ? "text-error" : highlight ? "text-brand" : "text-text-secondary";
+    tone === "error"
+      ? "text-error"
+      : highlight
+        ? "text-brand-on-subtle"
+        : "text-text-secondary";
   return (
     <div className={`flex flex-col gap-1.5 rounded-lg border ${bg} px-3.5 py-3`}>
       <div className={`flex items-center gap-1.5 text-xs font-medium ${labelClass}`}>
@@ -178,9 +199,9 @@ function Card({
 function SkeletonState() {
   return (
     <div className="flex flex-col gap-3">
-      <div className="h-16 animate-pulse rounded-lg bg-bg-elevated" />
-      <div className="h-12 animate-pulse rounded-lg bg-bg-elevated" />
-      <div className="h-12 animate-pulse rounded-lg bg-bg-elevated" />
+      <div className="h-16 animate-pulse rounded-lg bg-bg-subtle" />
+      <div className="h-12 animate-pulse rounded-lg bg-bg-subtle" />
+      <div className="h-12 animate-pulse rounded-lg bg-bg-subtle" />
     </div>
   );
 }

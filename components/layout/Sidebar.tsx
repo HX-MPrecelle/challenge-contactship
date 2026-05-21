@@ -2,12 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, MessageSquare, Settings2, Sparkles, Users } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Check,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Settings2,
+  Users,
+} from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
 
 const NAV = [
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/contacts", label: "Contactos", Icon: Users },
+  { href: "/conflicts", label: "Conflictos", Icon: AlertTriangle },
   { href: "/chat", label: "Chat", Icon: MessageSquare },
+  { href: "/sync", label: "Sync", Icon: Activity },
   { href: "/settings", label: "Settings", Icon: Settings2 },
 ] as const;
 
@@ -17,10 +29,10 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-border-default bg-bg-surface p-3">
       <div className="flex items-center gap-2 px-2 py-3">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-subtle text-brand">
-          <Sparkles size={14} />
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-text-primary">
+          <Check size={14} className="text-white" strokeWidth={2.5} />
         </div>
-        <span className="font-heading text-sm font-semibold text-text-primary">
+        <span className="text-sm font-semibold text-text-primary">
           ContactShip
         </span>
       </div>
@@ -36,8 +48,8 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
               className={[
                 "flex h-[34px] items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-brand-subtle text-brand"
-                  : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary",
+                  ? "bg-bg-subtle text-text-primary"
+                  : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
               ].join(" ")}
             >
               <Icon size={16} />
@@ -52,7 +64,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
         <form action={signOut}>
           <button
             type="submit"
-            className="flex h-[34px] w-full items-center gap-2 rounded-md px-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-elevated hover:text-text-primary"
+            className="flex h-[34px] w-full items-center gap-2 rounded-md px-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
           >
             <LogOut size={16} />
             <span>Cerrar sesión</span>

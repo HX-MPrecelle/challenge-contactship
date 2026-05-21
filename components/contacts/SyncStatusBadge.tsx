@@ -12,7 +12,7 @@ const PALETTE: Record<string, { bg: string; text: string; dotClass: string }> = 
   conflict: {
     bg: "bg-error-subtle",
     text: "text-error",
-    dotClass: "bg-error animate-pulse",
+    dotClass: "bg-error animate-pulse-dot",
   },
   error: {
     bg: "bg-error-subtle",
@@ -23,7 +23,7 @@ const PALETTE: Record<string, { bg: string; text: string; dotClass: string }> = 
 
 export function SyncStatusBadge({ status }: { status: string }) {
   const p = PALETTE[status] ?? {
-    bg: "bg-bg-elevated",
+    bg: "bg-bg-subtle",
     text: "text-text-muted",
     dotClass: "bg-text-muted",
   };

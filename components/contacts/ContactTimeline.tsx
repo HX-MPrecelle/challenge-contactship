@@ -36,7 +36,7 @@ const EVENT_META: Record<
     Icon: Trash2,
     label: "Archivado",
     iconClass: "text-text-muted",
-    bgClass: "bg-bg-elevated",
+    bgClass: "bg-bg-subtle",
   },
   conflict: {
     Icon: AlertTriangle,
@@ -46,9 +46,9 @@ const EVENT_META: Record<
   },
   skip: {
     Icon: SkipForward,
-    label: "Evento descartado (out of order o duplicado)",
+    label: "Evento descartado",
     iconClass: "text-text-muted",
-    bgClass: "bg-bg-elevated",
+    bgClass: "bg-bg-subtle",
   },
 };
 
@@ -62,37 +62,46 @@ export function ContactTimeline({ events }: { events: SyncEvent[] }) {
   }
 
   return (
-    <ol className="flex flex-col gap-3">
-      {events.map((event) => {
-        const meta =
-          EVENT_META[event.event_type] ?? {
-            Icon: Pencil,
-            label: event.event_type,
-            iconClass: "text-text-muted",
-            bgClass: "bg-bg-elevated",
-          };
+    <ol className="flex flex-col">
+      {events.map((event, index) => {
+        const isLast = index === events.length - 1;
+        const meta = EVENT_META[event.event_type] ?? {
+          Icon: Pencil,
+          label: event.event_type,
+          iconClass: "text-text-muted",
+          bgClass: "bg-bg-subtle",
+        };
         const DirIcon =
           event.direction === "hubspot_to_local"
             ? ArrowDownToLine
             : ArrowUpFromLine;
+
         return (
-          <li key={event.id} className="flex items-start gap-3">
-            <div
-              className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-full ${meta.bgClass} ${meta.iconClass}`}
-            >
-              <meta.Icon size={13} />
+          <li key={event.id} className="flex gap-3">
+            {/* Icon column with connector line */}
+            <div className="flex flex-col items-center">
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${meta.bgClass} ${meta.iconClass}`}
+              >
+                <meta.Icon size={13} />
+              </div>
+              {!isLast && (
+                <div className="my-1.5 w-px flex-1 bg-border-default" />
+              )}
             </div>
-            <div className="flex flex-col gap-0.5 text-sm">
+
+            {/* Content */}
+            <div className={`flex flex-col gap-0.5 text-sm ${!isLast ? "pb-4" : ""}`}>
               <div className="flex items-center gap-2 text-text-primary">
                 <span className="font-medium">{meta.label}</span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-bg-elevated px-1.5 py-0.5 text-xs text-text-secondary">
+                <span className="inline-flex items-center gap-1 rounded-md bg-bg-subtle px-1.5 py-0.5 font-mono text-xs text-text-secondary">
                   <DirIcon size={11} />
                   {event.direction === "hubspot_to_local"
                     ? "desde HubSpot"
                     : "hacia HubSpot"}
                 </span>
               </div>
-              <span className="text-xs text-text-muted">
+              <span className="font-mono text-xs text-text-muted">
                 {new Date(event.created_at).toLocaleString("es-AR", {
                   dateStyle: "medium",
                   timeStyle: "short",

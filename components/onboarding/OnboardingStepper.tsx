@@ -4,11 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
+  Check,
   CheckCircle2,
   Loader2,
   Plug,
   PlugZap,
-  Sparkles,
   Users,
   XCircle,
 } from "lucide-react";
@@ -174,8 +174,8 @@ function WelcomeStep({
   return (
     <form action={handleSubmit} className="flex flex-col gap-6">
       <header className="flex flex-col items-center gap-3 text-center">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-subtle text-brand">
-          <Sparkles size={20} />
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-text-primary">
+          <Check size={20} className="text-white" strokeWidth={2.5} />
         </div>
         <div className="flex flex-col gap-1.5">
           <h2 className="font-heading text-xl font-semibold text-text-primary">
@@ -308,7 +308,6 @@ function SelectStep({
 
   useEffect(() => {
     void loadPreview({ mode: "all" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -449,21 +448,89 @@ function SelectionOption({
 }
 
 function SyncStep({ orgId, selection }: { orgId: string; selection: Selection }) {
+  console.log("[SyncStep] component mounting (BUILD-V4)", { orgId, selection });
   const router = useRouter();
   const [progress, setProgress] = useState({ processed: 0, total: 0 });
   const [phase, setPhase] = useState<"connecting" | "syncing" | "done" | "error">(
     "connecting"
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const startedRef = useRef(false);
+  // importStarted has to survive React Strict Mode's mount→cleanup→remount
+  // dance in dev. If we used a local let, the cleanup would tear down the
+  // channel + timer and the second mount would re-establish them but with
+  // a fresh `let importStarted = false` — fine. But if we used a single
+  // useRef as a one-shot guard on the effect, the second mount would skip
+  // setup entirely and the import would never fire. The ref is only a
+  // dedup against importContacts running twice, not against the effect
+  // running twice.
+  const importStartedRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
     let cancelled = false;
     const supabase = createClient();
     const channel = supabase.channel(`sync:${orgId}`);
+
+    async function runImport() {
+      if (importStartedRef.current || cancelled) return;
+      importStartedRef.current = true;
+      setPhase("syncing");
+
+      const filter =
+        selection.mode === "lifecycle"
+          ? { lifecycleStage: selection.lifecycleStage }
+          : {};
+
+      console.log("[SyncStep] calling importContacts", filter);
+      const result = await importContacts(filter);
+      console.log("[SyncStep] importContacts returned", result);
+      if (cancelled) return;
+
+      if (!result.success) {
+        setErrorMessage(result.error);
+        setPhase("error");
+        toast.error(result.error);
+        return;
+      }
+
+      const completeResult = await markOnboardingComplete();
+      if (cancelled) return;
+
+      if (!completeResult.success) {
+        setErrorMessage(completeResult.error);
+        setPhase("error");
+        toast.error(completeResult.error);
+        return;
+      }
+
+      setPhase("done");
+      if (result.data.conflicts > 0) {
+        toast.warning(
+          `${result.data.conflicts} contacto(s) con conflicto detectado. Resolvelos desde Settings.`
+        );
+      } else {
+        toast.success(
+          `Importamos ${result.data.imported} contacto${result.data.imported === 1 ? "" : "s"}.`
+        );
+      }
+      setTimeout(() => {
+        if (cancelled) return;
+        router.push("/dashboard");
+        router.refresh();
+      }, 1200);
+    }
+
+    // Hard cap: if Realtime doesn't subscribe in 3 seconds, run the import
+    // anyway. The action still works without a broadcast channel — we just
+    // lose the incremental progress bar (we'll stay at 0% until the action
+    // resolves). Better degraded UX than a frozen screen.
+    const fallbackTimer = setTimeout(() => {
+      if (!importStartedRef.current && !cancelled) {
+        console.warn(
+          "[SyncStep] Realtime subscribe timed out, starting import without live progress"
+        );
+        void runImport();
+      }
+    }, 3000);
 
     channel
       .on("broadcast", { event: "progress" }, ({ payload }) => {
@@ -476,53 +543,17 @@ function SyncStep({ orgId, selection }: { orgId: string; selection: Selection })
         setProgress({ processed: p.processed, total: p.total });
         if (p.status === "syncing") setPhase("syncing");
       })
-      .subscribe(async (status) => {
-        if (status !== "SUBSCRIBED" || cancelled) return;
-        setPhase("syncing");
-
-        const filter =
-          selection.mode === "lifecycle"
-            ? { lifecycleStage: selection.lifecycleStage }
-            : {};
-        const result = await importContacts(filter);
-        if (cancelled) return;
-
-        if (!result.success) {
-          setErrorMessage(result.error);
-          setPhase("error");
-          toast.error(result.error);
-          return;
+      .subscribe((status) => {
+        console.log("[SyncStep] realtime status:", status);
+        if (status === "SUBSCRIBED" && !cancelled) {
+          clearTimeout(fallbackTimer);
+          void runImport();
         }
-
-        const completeResult = await markOnboardingComplete();
-        if (cancelled) return;
-
-        if (!completeResult.success) {
-          setErrorMessage(completeResult.error);
-          setPhase("error");
-          toast.error(completeResult.error);
-          return;
-        }
-
-        setPhase("done");
-        if (result.data.conflicts > 0) {
-          toast.warning(
-            `${result.data.conflicts} contacto(s) con conflicto detectado. Resolvelos desde Settings.`
-          );
-        } else {
-          toast.success(
-            `Importamos ${result.data.imported} contacto${result.data.imported === 1 ? "" : "s"}.`
-          );
-        }
-        setTimeout(() => {
-          if (cancelled) return;
-          router.push("/contacts");
-          router.refresh();
-        }, 1200);
       });
 
     return () => {
       cancelled = true;
+      clearTimeout(fallbackTimer);
       supabase.removeChannel(channel);
     };
   }, [orgId, selection, router]);
@@ -582,7 +613,7 @@ function SyncStep({ orgId, selection }: { orgId: string; selection: Selection })
       {phase === "error" && (
         <Button
           onClick={() => {
-            startedRef.current = false;
+            importStartedRef.current = false;
             setPhase("connecting");
             setErrorMessage(null);
             setProgress({ processed: 0, total: 0 });
