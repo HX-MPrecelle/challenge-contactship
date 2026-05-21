@@ -701,3 +701,243 @@ Generá el análisis.`,
     };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PIPELINE HEALTH ALERTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PipelineAlertSchema = z.object({
+  alerts: z
+    .array(
+      z.object({
+        severity: z.enum(["critical", "warning", "info", "success"]),
+        emoji: z.string().max(4),
+        title: z.string().max(80),
+        description: z.string().max(220),
+        count: z.number().int().min(0),
+        cta: z.string().max(60),
+        filterPath: z.string().max(100).optional(),
+      })
+    )
+    .min(1)
+    .max(6),
+  overallHealth: z.enum(["critical", "warning", "good", "excellent"]),
+  summary: z.string().max(200),
+});
+
+export type PipelineAlerts = z.infer<typeof PipelineAlertSchema>;
+
+export async function generatePipelineAlerts(input: {
+  locale?: string;
+}): Promise<{ success: true; data: PipelineAlerts } | { success: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado" };
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización" };
+  if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
+
+  const locale = input.locale ?? "es";
+  const now = new Date();
+  const ago = (days: number) => new Date(now.getTime() - days * 86400000).toISOString();
+  const admin = createServiceClient();
+
+  const [
+    { count: stalledOpps },
+    { count: atRiskCustomers },
+    { count: newUnworked },
+    { count: openDeals },
+    { count: attemptedNoReply },
+    { count: totalContacts },
+    { count: sqlNoActivity },
+  ] = await Promise.all([
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lifecycle_stage", "opportunity").lt("local_updated_at", ago(30)),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lifecycle_stage", "customer").lt("local_updated_at", ago(60)),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lead_status", "NEW").lt("local_updated_at", ago(7)),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lead_status", "OPEN_DEAL"),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lead_status", "ATTEMPTED_TO_CONTACT"),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false),
+    admin.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_archived", false).eq("lifecycle_stage", "salesqualifiedlead").lt("local_updated_at", ago(14)),
+  ]);
+
+  const langInstr = locale === "en"
+    ? "Respond in English."
+    : "Respondé en español rioplatense.";
+
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: PipelineAlertSchema,
+      system: `You are a B2B sales pipeline analyst. Generate actionable pipeline health alerts based on CRM metrics. ${langInstr} Be specific with numbers. Use appropriate emojis (⚠️ warning, 🔥 critical, ✅ good, 💡 opportunity).`,
+      prompt: `Pipeline stats:
+- Total contacts: ${totalContacts}
+- Stalled opportunities (>30 days no update): ${stalledOpps}
+- At-risk customers (>60 days no contact): ${atRiskCustomers}
+- New leads unworked (>7 days): ${newUnworked}
+- Active open deals: ${openDeals}
+- Contacts not replying (ATTEMPTED_TO_CONTACT): ${attemptedNoReply}
+- SQL with no activity >14 days: ${sqlNoActivity}
+
+Generate 3-5 prioritized alerts. Include a filterPath like "/contacts?status=conflict" when relevant.
+For stalled opps use "/contacts" as filterPath.`,
+    });
+    return { success: true, data: object };
+  } catch (err) {
+    console.error("[generatePipelineAlerts]", err);
+    return { success: false, error: "No se pudo analizar el pipeline." };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WIN / LOSS PATTERN ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const WinLossSchema = z.object({
+  winProfile: z.object({
+    patterns: z.array(z.object({
+      pattern: z.string().max(90),
+      detail: z.string().max(180),
+    })).max(5),
+    idealCustomer: z.string().max(280),
+    keySignals: z.array(z.string().max(80)).max(5),
+  }),
+  lossSignals: z.array(z.object({
+    signal: z.string().max(80),
+    description: z.string().max(160),
+  })).max(5),
+  recommendations: z.array(z.object({
+    action: z.string().max(100),
+    reasoning: z.string().max(200),
+    priority: z.enum(["high", "medium", "low"]),
+  })).max(4),
+});
+
+export type WinLossAnalysis = z.infer<typeof WinLossSchema>;
+
+export async function analyzeWinLoss(input: {
+  locale?: string;
+}): Promise<{ success: true; data: WinLossAnalysis; winsCount: number; lossesCount: number } | { success: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado" };
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización" };
+  if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
+
+  const locale = input.locale ?? "es";
+  const admin = createServiceClient();
+
+  const [{ data: wins }, { data: losses }] = await Promise.all([
+    admin.from("contacts").select("first_name, last_name, company, job_title, lifecycle_stage, lead_status, country, properties")
+      .eq("org_id", orgId).eq("is_archived", false).eq("lifecycle_stage", "customer").order("local_updated_at", { ascending: false }).limit(40),
+    admin.from("contacts").select("first_name, last_name, company, job_title, lifecycle_stage, lead_status, country, properties")
+      .eq("org_id", orgId).eq("is_archived", false).in("lead_status", ["UNQUALIFIED", "BAD_TIMING"]).order("local_updated_at", { ascending: false }).limit(25),
+  ]);
+
+  if (!wins || wins.length === 0) return { success: false, error: "No hay deals cerrados para analizar." };
+
+  const fmt = (c: Record<string, unknown>) => {
+    const p = (c.properties ?? {}) as Record<string, string | null>;
+    return [
+      `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "—",
+      c.company, c.job_title,
+      p.industry,
+      p.numemployees ? `${p.numemployees} emp.` : null,
+      c.country,
+      p.message ? `Notes: "${p.message.slice(0, 250)}"` : null,
+    ].filter(Boolean).join(" | ");
+  };
+
+  const winsText = (wins ?? []).map(fmt as (c: unknown) => string).join("\n");
+  const lossesText = (losses ?? []).map(fmt as (c: unknown) => string).join("\n");
+
+  const langInstr = locale === "en" ? "Respond in English." : "Respondé en español rioplatense.";
+
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: WinLossSchema,
+      system: `You are a B2B sales strategist. Analyze won and lost deals and extract strategic patterns. ${langInstr} Be specific, actionable, and data-driven. Reference industries, roles, company sizes from the data.`,
+      prompt: `WON customers (${wins?.length ?? 0} contacts):
+${winsText}
+
+LOST/unqualified contacts (${losses?.length ?? 0}):
+${lossesText}
+
+Analyze patterns. The 'Notes' fields contain CRM notes with deal context — use them for deeper insights.`,
+    });
+    return { success: true, data: object, winsCount: wins?.length ?? 0, lossesCount: losses?.length ?? 0 };
+  } catch (err) {
+    console.error("[analyzeWinLoss]", err);
+    return { success: false, error: "No se pudo generar el análisis." };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPETITIVE INTELLIGENCE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CompetitiveSchema = z.object({
+  competitors: z.array(z.object({
+    name: z.string().max(60),
+    mentions: z.number().int().min(1),
+    wonAgainst: z.number().int().min(0),
+    lostAgainst: z.number().int().min(0),
+    activeDeals: z.number().int().min(0),
+    differentiators: z.array(z.string().max(120)).max(3),
+    quote: z.string().max(220).optional(),
+  })).max(10),
+  summary: z.string().max(300),
+  noCompetitorsFound: z.boolean().optional(),
+});
+
+export type CompetitiveAnalysis = z.infer<typeof CompetitiveSchema>;
+
+export async function extractCompetitorMentions(input: {
+  locale?: string;
+}): Promise<{ success: true; data: CompetitiveAnalysis; notesCount: number } | { success: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado" };
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización" };
+  if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
+
+  const locale = input.locale ?? "es";
+  const admin = createServiceClient();
+
+  // Fetch contacts with properties — filter client-side for non-empty message
+  const { data: allContacts } = await admin.from("contacts")
+    .select("first_name, last_name, company, lifecycle_stage, lead_status, properties")
+    .eq("org_id", orgId).eq("is_archived", false).limit(300);
+
+  const withNotes = (allContacts ?? []).filter((c) => {
+    const p = (c.properties ?? {}) as Record<string, string | null>;
+    return p.message && p.message.trim().length > 30;
+  });
+
+  if (withNotes.length === 0) return { success: false, error: "No hay notas suficientes en el CRM." };
+
+  const notesText = withNotes.map((c) => {
+    const p = (c.properties ?? {}) as Record<string, string | null>;
+    const dealStatus = c.lifecycle_stage === "customer" ? "WON"
+      : c.lead_status === "UNQUALIFIED" ? "LOST"
+      : "ACTIVE";
+    return `[${dealStatus}] ${c.company ?? "—"}: "${p.message!.slice(0, 300)}"`;
+  }).join("\n\n");
+
+  const langInstr = locale === "en" ? "Respond in English." : "Respondé en español rioplatense.";
+
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: CompetitiveSchema,
+      system: `You are a competitive intelligence analyst. Extract competitor mentions from CRM notes and analyze win/loss context. ${langInstr} Be precise: only include competitors explicitly mentioned by name. WON = we won, LOST = we lost, ACTIVE = deal in progress.`,
+      prompt: `CRM notes from ${withNotes.length} contacts:\n\n${notesText}\n\nExtract all competitor mentions with win/loss context and key differentiators our team uses against them.`,
+    });
+    return { success: true, data: object, notesCount: withNotes.length };
+  } catch (err) {
+    console.error("[extractCompetitorMentions]", err);
+    return { success: false, error: "No se pudo analizar la inteligencia competitiva." };
+  }
+}

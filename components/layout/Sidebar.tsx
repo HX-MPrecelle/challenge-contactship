@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   Check,
   ChevronDown,
   LayoutDashboard,
@@ -32,6 +33,7 @@ export function Sidebar({ userEmail, locale }: Props) {
     { href: "/dashboard", label: t("nav.dashboard"), Icon: LayoutDashboard },
     { href: "/contacts", label: t("nav.contacts"), Icon: Users },
     { href: "/conflicts", label: t("nav.conflicts"), Icon: AlertTriangle },
+    { href: "/insights", label: t("nav.insights"), Icon: BarChart3 },
     { href: "/chat", label: t("nav.chat"), Icon: MessageSquare },
     { href: "/sync", label: t("nav.sync"), Icon: Activity },
   ] as const;

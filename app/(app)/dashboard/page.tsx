@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
+import { PipelineHealthWidget } from "@/components/dashboard/PipelineHealthWidget";
 import { createClient } from "@/lib/supabase/server";
 import {
   createT,
@@ -166,6 +167,8 @@ export default async function DashboardPage() {
         }))}
         total={total ?? 0}
       />
+
+      <PipelineHealthWidget />
 
       <DashboardPriorities />
 
