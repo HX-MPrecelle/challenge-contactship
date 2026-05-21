@@ -72,47 +72,66 @@ export async function POST(request: NextRequest) {
     : [];
 
   // Recent sample — best for aggregate questions ("which country has the
-  // most leads?") where similarity search would miss the long tail. We
-  // include this regardless of how good the semantic match was; the model
-  // gets both contexts and decides which to draw from.
-  const [{ count: totalContacts }, { data: recentSample }] = await Promise.all([
-    admin
-      .from("contacts")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .eq("is_archived", false),
-    admin
-      .from("contacts")
-      .select(
-        "first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, country"
-      )
-      .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .order("local_updated_at", { ascending: false })
-      .limit(RECENT_SAMPLE_LIMIT),
-  ]);
+  // most leads?") where similarity search would miss the long tail.
+  // Customer sample — always included so questions about "closed deals" /
+  // "customers" / "clients" have data even if those contacts are old and
+  // won't appear in the recent-first sample.
+  const CONTACT_FIELDS =
+    "first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, country";
+
+  const [{ count: totalContacts }, { data: recentSample }, { data: customerSample }] =
+    await Promise.all([
+      admin
+        .from("contacts")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("is_archived", false),
+      admin
+        .from("contacts")
+        .select(CONTACT_FIELDS)
+        .eq("org_id", orgId)
+        .eq("is_archived", false)
+        .order("local_updated_at", { ascending: false })
+        .limit(RECENT_SAMPLE_LIMIT),
+      admin
+        .from("contacts")
+        .select(CONTACT_FIELDS)
+        .eq("org_id", orgId)
+        .eq("is_archived", false)
+        .in("lifecycle_stage", ["customer", "opportunity"])
+        .order("local_updated_at", { ascending: false })
+        .limit(15),
+    ]);
 
   const semanticContext = formatContactsContext(relevantContacts);
   const sampleContext = formatRecentSample(recentSample ?? []);
+  const closedContext = formatRecentSample(
+    (customerSample ?? []).filter(
+      (c) => !recentSample?.some((r) => r.email === c.email)
+    )
+  );
   const total = totalContacts ?? 0;
   const sampleNote =
     total > RECENT_SAMPLE_LIMIT
-      ? `(muestra de ${recentSample?.length ?? 0} contactos más recientes — el total real es ${total})`
-      : `(${total} contacto${total === 1 ? "" : "s"} en total)`;
+      ? `(${recentSample?.length ?? 0} most recent of ${total} total)`
+      : `(${total} total)`;
 
   const system = `${CHAT_SYSTEM_PROMPT}
 
 ${getPersonaInstructions(persona)}
 
-Total de contactos del usuario: ${total}.
+Total contacts in the CRM: ${total}.
 
-Contactos más relevantes para esta pregunta (top 20 por similitud semántica):
+Semantically relevant contacts for this question (top 20 by vector similarity):
 ${semanticContext}
 
-Muestra de contactos recientes ${sampleNote}, útil para preguntas agregadas:
+Recent contacts sample ${sampleNote}:
 ${sampleContext}
 
-Para preguntas tipo "cuántos por país / industria / etapa", calculá la respuesta sobre la muestra que recibís y aclarale al usuario si esa muestra es parcial respecto al total. Para preguntas profundas sobre un patrón específico (qué tienen en común mis customers cerrados, qué señales de riesgo veo, etc.), priorizá los contactos del bloque de similitud semántica.`;
+${closedContext !== "No relevant contacts found via semantic search." ? `Customers & opportunities (for "closed deals", "clients", "wins" type questions):
+${closedContext}` : ""}
+
+Use the semantic block for deep pattern questions. Use the recent sample for aggregate questions (by country, stage, etc.). Always clarify to the user when the sample is partial relative to the total.`;
 
   const citations: ContactCitation[] = relevantContacts.map((c) => ({
     id: c.id,

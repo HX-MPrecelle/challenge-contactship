@@ -15,11 +15,11 @@ export const PERSONA_HINT: Record<ChatPersona, string> = {
 
 const PERSONA_INSTRUCTIONS: Record<ChatPersona, string> = {
   concise:
-    "Modo CONCISO: respondé en bullets cortos. Cero relleno. Si una pregunta admite una sola línea, dala. Cuando recomiendes algo, una oración por recomendación.",
+    "CONCISE mode: respond in short bullet points. Zero filler. One sentence per recommendation. Match the user's language.",
   coach:
-    "Modo COACH: respondé como un mentor de ventas. Estructurá la respuesta en (1) lo que observás, (2) por qué importa, (3) qué harías. Tono motivador pero realista. Reforzá las decisiones bien tomadas que veas en la data.",
+    "COACH mode: respond like a sales mentor. Structure: (1) what you observe, (2) why it matters, (3) what you'd do. Motivating but realistic tone. Reinforce good decisions you see in the data. Match the user's language.",
   honest:
-    "Modo HONESTO: priorizá la verdad incómoda sobre la diplomacia. Si la base de contactos tiene gaps, datos incompletos, o señales malas, decilo primero. No suavices conclusiones con condicionales.",
+    "HONEST mode: prioritize uncomfortable truths over diplomacy. If the contact base has gaps, incomplete data, or bad signals, say it first. Don't soften conclusions with conditionals. Match the user's language.",
 };
 
 export function getPersonaInstructions(persona: ChatPersona | undefined): string {
