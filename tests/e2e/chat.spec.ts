@@ -121,29 +121,23 @@ test.describe("Chat — sending messages", () => {
   test("sent conversation appears in history rail", async ({ page }) => {
     await goto(page, "/chat");
 
-    const initialConvCount = await page
-      .locator("aside .flex-col div.group")
-      .count();
+    // Conversation items render as div.group inside the aside — no .flex-col wrapper
+    const initialConvCount = await page.locator("aside div.group").count();
 
-    // Create a new conversation
     await page.getByRole("button", { name: /nueva conversación/i }).click();
     const textarea = page.getByPlaceholder(/escribí tu pregunta/i);
     await textarea.fill("Test para history rail");
     await page.keyboard.press("Enter");
 
-    // Wait for message to appear. Use .first() — same text also becomes the rail title.
+    // Message appears in the conversation panel. Use .first() — same text also
+    // appears as the conversation title in the history rail.
     await expect(
       page.getByText("Test para history rail").first()
     ).toBeVisible({ timeout: 5_000 });
 
-    // Wait a moment for the conversation to be persisted and history to update
     await page.waitForTimeout(2_000);
 
-    const newConvCount = await page
-      .locator("aside .flex-col div.group")
-      .count();
-
-    // Should have at least one more conversation than before
+    const newConvCount = await page.locator("aside div.group").count();
     expect(newConvCount).toBeGreaterThanOrEqual(initialConvCount + 1);
   });
 
@@ -159,8 +153,12 @@ test.describe("Chat — sending messages", () => {
     // Start new conversation
     await page.getByRole("button", { name: /nueva conversación/i }).click();
 
-    // Old message should not be visible
-    await expect(page.getByText("Pregunta inicial")).not.toBeVisible({ timeout: 3_000 });
+    // "Pregunta inicial" stays in the history rail as a conversation title, so
+    // we can't assert it's not visible. Instead verify the panel shows the
+    // empty state (no messages loaded), which proves the messages were cleared.
+    await expect(
+      page.getByRole("heading", { name: /hacé una pregunta/i })
+    ).toBeVisible({ timeout: 3_000 });
   });
 });
 
