@@ -7,6 +7,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { countContacts, listContactsPage } from "@/lib/hubspot/contacts";
 import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
+import { getPortalContactProperties } from "@/lib/hubspot/properties";
 import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { HubSpotAuthError } from "@/lib/errors";
 import { after } from "next/server";
@@ -199,6 +200,11 @@ export async function importContacts(
 
   try {
     console.log(`[importContacts] start orgId=${orgId}`);
+
+    // Fetch all portal property definitions once before the import loop
+    const portalProps = await getPortalContactProperties(client);
+    console.log(`[importContacts] portal has ${portalProps.names.length} contact properties`);
+
     const total = await countContacts(client, {
       lifecycleStage: parsed.data.lifecycleStage,
     });
@@ -217,6 +223,7 @@ export async function importContacts(
         after: cursor,
         limit: 100,
         lifecycleStage: parsed.data.lifecycleStage,
+        propertyNames: portalProps.names,
       });
       console.log(`[importContacts] page ${pageIdx} got ${page.results.length} contacts`);
 

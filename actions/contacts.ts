@@ -13,6 +13,7 @@ import {
 import { embedContacts } from "@/lib/ai/embeddings";
 import { HubSpotAuthError, HubSpotRateLimitError } from "@/lib/errors";
 import { after } from "next/server";
+import { getPortalContactProperties } from "@/lib/hubspot/properties";
 
 const UpdateContactSchema = z.object({
   id: z.string().uuid(),
@@ -77,7 +78,9 @@ export async function updateContact(
 
     const admin = createServiceClient();
     const normalized = normalizeHubSpotContact(fresh);
-    const text = buildContactText(normalized);
+    // Fetch portal properties to get labels for richer embedding text
+    const portalProps = await getPortalContactProperties(client).catch(() => null);
+    const text = buildContactText(normalized, portalProps?.labels);
 
     // Upsert immediately without embedding so the UI reflects the new data now.
     await upsertContactFromHubSpot(admin, orgId, fresh, {

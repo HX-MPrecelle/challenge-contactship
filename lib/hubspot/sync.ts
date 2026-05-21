@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/types/database";
 import type { HubSpotContact } from "@/lib/hubspot/contacts";
+import { shouldIncludeProperty } from "@/lib/hubspot/properties";
 
 const CONFLICT_WINDOW_MS = 5 * 60 * 1000;
 
@@ -81,54 +82,50 @@ export function calculateSyncHash(
 
 /**
  * Build the embeddable text representation for a contact.
- * Reads both promoted typed columns AND the raw `properties` JSONB so that
- * rich HubSpot data (industry, notes, engagement signals) improves semantic
- * search quality without requiring schema migrations for each new field.
+ *
+ * Fully dynamic: reads ALL fields from the `properties` JSONB (which stores
+ * everything fetched from HubSpot, including custom portal fields) and filters
+ * out system/operational properties that add noise. This means new HubSpot
+ * custom fields automatically appear in embeddings without code changes.
+ *
+ * @param contact    Normalized contact record
+ * @param labels     Optional field-name → human-readable label map from
+ *                   getPortalContactProperties(). When present, makes the
+ *                   embedding text much more readable for the AI model.
  */
-export function buildContactText(contact: NormalizedContact): string {
+export function buildContactText(
+  contact: NormalizedContact,
+  labels?: Map<string, string>
+): string {
   const p = contact.properties ?? {};
+  const parts: string[] = [];
+  const used = new Set<string>();
 
-  // Format a date string into a human-readable label (e.g. "hace 45 días").
-  function daysAgo(iso: string | null | undefined): string | null {
-    if (!iso) return null;
-    const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-    if (d < 0) return null;
-    if (d === 0) return "hoy";
-    if (d === 1) return "ayer";
-    return `hace ${d} días`;
+  // ── 1. Name always leads ──────────────────────────────────────────────────
+  const name = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Contact";
+  parts.push(name);
+  used.add("firstname");
+  used.add("lastname");
+
+  // ── 2. All properties from JSONB — dynamic, covers custom fields ──────────
+  // Sort so that "important" fields come first (shorter keys tend to be core).
+  const entries = Object.entries(p).sort(([a], [b]) => a.length - b.length);
+
+  for (const [key, value] of entries) {
+    if (used.has(key)) continue;
+    if (!shouldIncludeProperty(key, value)) continue;
+    used.add(key);
+
+    // Use human-readable label if available, otherwise format the key name
+    const label = labels?.get(key) ?? key.replace(/_/g, " ");
+    const val = String(value).trim();
+
+    // Truncate very long free-text values to avoid bloating the embedding
+    const truncated = val.length > 500 ? `${val.slice(0, 500)}…` : val;
+    parts.push(`${label}: ${truncated}`);
   }
 
-  const lastContacted = daysAgo(p.hs_last_contacted ?? p.notes_last_updated);
-  const lastReplied = daysAgo(p.hs_sales_email_last_replied);
-
-  return [
-    [contact.firstName, contact.lastName].filter(Boolean).join(" ") || "Contact",
-    contact.jobTitle && `Cargo: ${contact.jobTitle}`,
-    contact.company && `Empresa: ${contact.company}`,
-    // Industry — most impactful for AI clustering
-    p.industry && `Industria: ${p.industry}`,
-    // Company size
-    p.numemployees && `Tamaño empresa: ${p.numemployees} empleados`,
-    // Revenue
-    p.annualrevenue && Number(p.annualrevenue) > 0
-      && `Facturación anual: $${Number(p.annualrevenue).toLocaleString("es-AR")}`,
-    contact.lifecycleStage && `Etapa: ${contact.lifecycleStage}`,
-    contact.leadStatus && `Estado del lead: ${contact.leadStatus}`,
-    p.hs_buying_role && `Rol de compra: ${p.hs_buying_role}`,
-    contact.country && `País: ${contact.country}`,
-    contact.email && `Email: ${contact.email}`,
-    // Engagement recency signals
-    lastContacted && `Último contacto: ${lastContacted}`,
-    lastReplied && `Última respuesta: ${lastReplied}`,
-    p.hs_email_open_count && Number(p.hs_email_open_count) > 0
-      && `Emails abiertos: ${p.hs_email_open_count}`,
-    // Lead source
-    p.hs_analytics_source && `Fuente: ${p.hs_analytics_source}`,
-    // Free-text notes — highest value for semantic search
-    p.message && p.message.trim() && `Notas: ${p.message.trim().slice(0, 400)}`,
-  ]
-    .filter(Boolean)
-    .join(". ");
+  return parts.join(". ");
 }
 
 /**

@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { listContactsPage } from "@/lib/hubspot/contacts";
 import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
+import { getPortalContactProperties } from "@/lib/hubspot/properties";
 import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { HubSpotAuthError } from "@/lib/errors";
 
@@ -53,12 +54,17 @@ export async function GET(request: NextRequest) {
     let processed = 0;
     try {
       const client = await getHubSpotClient(connection.org_id);
+
+      // Fetch all property definitions once per org — includes custom fields
+      const portalProps = await getPortalContactProperties(client);
+
       let cursor: string | undefined;
 
       do {
         const page = await listContactsPage(client, {
           after: cursor,
           limit: 100,
+          propertyNames: portalProps.names,
         });
 
         // For each contact, check our stored hubspot_updated_at and only

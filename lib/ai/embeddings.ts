@@ -3,6 +3,7 @@ import { embedMany } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { normalizeHubSpotContact, buildContactText } from "@/lib/hubspot/sync";
 
 // Use the OpenAI provider explicitly. The bare-string form ("openai/...")
 // routes through the Vercel AI Gateway in AI SDK v6, which needs its own
@@ -73,10 +74,12 @@ export async function backfillMissingEmbeddings(
     return { filled: 0, skipped: true };
   }
 
+  // Select the full properties JSONB so buildContactText can use all fields
+  // (including custom portal properties like industry, notes, etc.)
   const { data: missing, error } = await admin
     .from("contacts")
     .select(
-      "id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, country"
+      "id, hubspot_id, first_name, last_name, email, phone, company, job_title, lifecycle_stage, lead_status, website, city, country, properties"
     )
     .eq("org_id", orgId)
     .eq("is_archived", false)
@@ -93,20 +96,34 @@ export async function backfillMissingEmbeddings(
 
   console.log(`[backfillMissingEmbeddings] generating ${missing.length} embeddings`);
 
-  const inputs = missing.map((c) => ({
-    key: c.id,
-    text: [
-      [c.first_name, c.last_name].filter(Boolean).join(" ") || "Contact",
-      c.job_title && `Cargo: ${c.job_title}`,
-      c.company && `Empresa: ${c.company}`,
-      c.lifecycle_stage && `Etapa: ${c.lifecycle_stage}`,
-      c.lead_status && `Estado: ${c.lead_status}`,
-      c.country && `País: ${c.country}`,
-      c.email && `Email: ${c.email}`,
-    ]
-      .filter(Boolean)
-      .join(". "),
-  }));
+  const inputs = missing.map((c) => {
+    // Reconstruct a minimal HubSpot contact shape and normalize it so
+    // buildContactText reads the full properties JSONB dynamically.
+    const fakeHubSpot = {
+      id: c.hubspot_id,
+      properties: {
+        ...(c.properties as Record<string, string | null> ?? {}),
+        firstname: c.first_name,
+        lastname: c.last_name,
+        email: c.email,
+        phone: c.phone,
+        company: c.company,
+        jobtitle: c.job_title,
+        lifecyclestage: c.lifecycle_stage,
+        hs_lead_status: c.lead_status,
+        website: c.website,
+        city: c.city,
+        country: c.country,
+      },
+      createdAt: "",
+      updatedAt: "",
+      archived: false,
+    };
+    return {
+      key: c.id,
+      text: buildContactText(normalizeHubSpotContact(fakeHubSpot)),
+    };
+  });
 
   const embeddings = await embedContacts(inputs);
   if (!embeddings) {

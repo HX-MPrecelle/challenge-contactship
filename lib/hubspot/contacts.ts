@@ -1,10 +1,11 @@
 import "server-only";
 import type { HubSpotClient } from "@/lib/hubspot/client";
 
-// Properties we always request from HubSpot. Anything outside this list lands
-// in `contacts.properties` JSONB without being promoted to a typed column.
-// Expanded to include business-context and engagement fields that significantly
-// improve embedding quality and AI insight accuracy.
+/**
+ * Minimum set of properties to request when portal property definitions are
+ * unavailable. The full dynamic list is fetched via getPortalContactProperties()
+ * in lib/hubspot/properties.ts and passed to listContactsPage/getContact.
+ */
 export const HUBSPOT_CONTACT_PROPERTIES = [
   // ── Identity ──────────────────────────────────────────────────────────────
   "firstname",
@@ -60,17 +61,24 @@ export type HubSpotContactPage = {
 
 export async function listContactsPage(
   client: HubSpotClient,
-  options: { after?: string; limit?: number; lifecycleStage?: string } = {}
+  options: {
+    after?: string;
+    limit?: number;
+    lifecycleStage?: string;
+    /** Dynamic property list from getPortalContactProperties(). Falls back to HUBSPOT_CONTACT_PROPERTIES. */
+    propertyNames?: string[];
+  } = {}
 ): Promise<HubSpotContactPage> {
-  const { after, limit = 100, lifecycleStage } = options;
+  const { after, limit = 100, lifecycleStage, propertyNames } = options;
+  const props = propertyNames ?? [...HUBSPOT_CONTACT_PROPERTIES];
 
   if (lifecycleStage) {
-    return searchContacts(client, { after, limit, lifecycleStage });
+    return searchContacts(client, { after, limit, lifecycleStage, propertyNames: props });
   }
 
   const params = new URLSearchParams();
   params.set("limit", String(limit));
-  params.set("properties", HUBSPOT_CONTACT_PROPERTIES.join(","));
+  params.set("properties", props.join(","));
   params.set("archived", "false");
   if (after) params.set("after", after);
 
@@ -85,10 +93,10 @@ export async function listContactsPage(
 
 async function searchContacts(
   client: HubSpotClient,
-  options: { after?: string; limit: number; lifecycleStage: string }
+  options: { after?: string; limit: number; lifecycleStage: string; propertyNames?: string[] }
 ): Promise<HubSpotContactPage> {
   const body = {
-    properties: HUBSPOT_CONTACT_PROPERTIES,
+    properties: options.propertyNames ?? [...HUBSPOT_CONTACT_PROPERTIES],
     filterGroups: [
       {
         filters: [
@@ -167,10 +175,12 @@ export async function updateContact(
 
 export async function getContact(
   client: HubSpotClient,
-  hubspotId: string
+  hubspotId: string,
+  propertyNames?: string[]
 ): Promise<HubSpotContact | null> {
+  const props = propertyNames ?? [...HUBSPOT_CONTACT_PROPERTIES];
   const params = new URLSearchParams();
-  params.set("properties", HUBSPOT_CONTACT_PROPERTIES.join(","));
+  params.set("properties", props.join(","));
 
   const res = await client.fetch(
     `/crm/v3/objects/contacts/${hubspotId}?${params.toString()}`

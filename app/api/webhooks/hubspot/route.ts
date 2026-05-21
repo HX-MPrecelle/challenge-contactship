@@ -2,6 +2,7 @@ import { after, NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getHubSpotClient } from "@/lib/hubspot/client";
 import { getContact } from "@/lib/hubspot/contacts";
+import { getPortalContactProperties } from "@/lib/hubspot/properties";
 import {
   archiveContact,
   buildContactText,
@@ -91,9 +92,12 @@ async function processEvents(events: HubSpotWebhookEvent[]): Promise<void> {
     });
     if (!client) continue;
 
+    // Fetch all property definitions once per portal batch
+    const portalProps = await getPortalContactProperties(client).catch(() => null);
+
     for (const event of portalEvents) {
       try {
-        await processSingleEvent(admin, orgId, client, event);
+        await processSingleEvent(admin, orgId, client, event, portalProps);
       } catch (err) {
         console.error(
           `[hubspot webhook] event ${event.eventId} failed`,
@@ -108,7 +112,8 @@ async function processSingleEvent(
   admin: ReturnType<typeof createServiceClient>,
   orgId: string,
   client: Awaited<ReturnType<typeof getHubSpotClient>>,
-  event: HubSpotWebhookEvent
+  event: HubSpotWebhookEvent,
+  portalProps: import("@/lib/hubspot/properties").PortalProperties | null
 ): Promise<void> {
   const hubspotId = String(event.objectId);
 
@@ -126,7 +131,7 @@ async function processSingleEvent(
     event.subscriptionType === "contact.creation" ||
     event.subscriptionType === "contact.propertyChange"
   ) {
-    const contact = await getContact(client, hubspotId);
+    const contact = await getContact(client, hubspotId, portalProps?.names);
     if (!contact) {
       console.warn(
         `[hubspot webhook] contact ${hubspotId} missing on HubSpot, archiving`
@@ -136,7 +141,7 @@ async function processSingleEvent(
     }
 
     const normalized = normalizeHubSpotContact(contact);
-    const text = buildContactText(normalized);
+    const text = buildContactText(normalized, portalProps?.labels);
 
     // Upsert immediately so the local mirror is up to date.
     const result = await upsertContactFromHubSpot(admin, orgId, contact, {
