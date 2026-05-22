@@ -59,7 +59,7 @@ export default async function ContactsPage({ searchParams }: Props) {
     .eq("org_id", orgId)
     .eq("is_archived", false)
     .order("local_updated_at", { ascending: false })
-    .limit(200);
+    .limit(1000);
 
   if (error) {
     console.error("[contacts page]", error);
