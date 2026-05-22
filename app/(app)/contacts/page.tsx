@@ -12,38 +12,44 @@ import {
   SUPPORTED_LOCALES,
   type Locale,
 } from "@/lib/i18n/index";
+
 export const dynamic = "force-dynamic";
 
-type Props = {
-  searchParams: Promise<{ status?: string; page?: string }>;
-};
-
+const PAGE_SIZE = 10;
 const VALID_STATUSES = ["synced", "pending", "conflict", "error"] as const;
+const VALID_LIFECYCLES = [
+  "subscriber","lead","marketingqualifiedlead","salesqualifiedlead",
+  "opportunity","customer","evangelist","other",
+] as const;
+
 type SyncStatus = (typeof VALID_STATUSES)[number];
 
-function parseStatus(input: string | undefined): SyncStatus | null {
-  if (!input) return null;
-  return (VALID_STATUSES as readonly string[]).includes(input)
-    ? (input as SyncStatus)
-    : null;
-}
+type Props = {
+  searchParams: Promise<{
+    page?: string;
+    status?: string;
+    lifecycle?: string;
+    q?: string;
+  }>;
+};
 
 export default async function ContactsPage({ searchParams }: Props) {
-  const { status, page } = await searchParams;
-  const initialStatusFilter = parseStatus(status);
-  const initialPage = Math.max(0, parseInt(page ?? "0", 10) || 0);
+  const params = await searchParams;
+
+  const page     = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
+  const status   = (VALID_STATUSES as readonly string[]).includes(params.status ?? "")
+    ? (params.status as SyncStatus) : null;
+  const lifecycle = (VALID_LIFECYCLES as readonly string[]).includes(params.lifecycle ?? "")
+    ? params.lifecycle! : null;
+  const q = (params.q ?? "").trim().slice(0, 200);
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const orgId = (user.app_metadata?.org_id ?? user.user_metadata?.org_id) as string | undefined;
   if (!orgId) redirect("/login?error=no-org");
-
-  if (!user.user_metadata?.onboarding_complete) {
-    redirect("/onboarding");
-  }
+  if (!user.user_metadata?.onboarding_complete) redirect("/onboarding");
 
   const cookieStore = await cookies();
   const rawLocale = cookieStore.get(LOCALE_COOKIE)?.value as Locale | undefined;
@@ -51,19 +57,40 @@ export default async function ContactsPage({ searchParams }: Props) {
   const t = createT(locale);
   const density = getDensityFromCookieValue(cookieStore.get(DENSITY_COOKIE)?.value);
 
-  const { data: contacts, error } = await supabase
+  // Build the base query — filters applied server-side so the DB does the work
+  // regardless of how many total contacts exist.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let baseQuery: any = supabase
     .from("contacts")
     .select(
-      "id, first_name, last_name, email, company, job_title, lifecycle_stage, country, sync_status, local_updated_at, is_archived, created_at, city, lead_status"
+      "id, first_name, last_name, email, company, job_title, lifecycle_stage, country, sync_status, local_updated_at, is_archived, created_at, city, lead_status",
+      { count: "exact" }
     )
     .eq("org_id", orgId)
-    .eq("is_archived", false)
+    .eq("is_archived", false);
+
+  if (status)    baseQuery = baseQuery.eq("sync_status", status);
+  if (lifecycle) baseQuery = baseQuery.eq("lifecycle_stage", lifecycle);
+
+  if (q) {
+    // ilike across name + email + company — PostgREST OR filter
+    baseQuery = baseQuery.or(
+      `first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%,company.ilike.%${q}%,job_title.ilike.%${q}%,country.ilike.%${q}%`
+    );
+  }
+
+  const from = page * PAGE_SIZE;
+  const to   = from + PAGE_SIZE - 1;
+
+  const { data: contacts, count, error } = await baseQuery
     .order("local_updated_at", { ascending: false })
-    .limit(1000);
+    .range(from, to);
 
   if (error) {
     console.error("[contacts page]", error);
   }
+
+  const totalCount = count ?? 0;
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
@@ -85,10 +112,13 @@ export default async function ContactsPage({ searchParams }: Props) {
       </header>
 
       <ContactList
-        initialContacts={contacts ?? []}
+        contacts={contacts ?? []}
         orgId={orgId}
-        initialStatusFilter={initialStatusFilter}
-        initialPage={initialPage}
+        totalCount={totalCount}
+        page={page}
+        statusFilter={status}
+        lifecycleFilter={lifecycle}
+        searchQuery={q}
         density={density}
       />
     </main>
