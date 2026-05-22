@@ -20,6 +20,39 @@ const UpdateOrgNameSchema = z.object({
   name: z.string().min(1, "El nombre no puede estar vacío").max(120),
 });
 
+const UpdateOrgIndustrySchema = z.object({
+  industry: z.string().min(1).max(80).nullable(),
+});
+
+export async function updateOrganizationIndustry(
+  input: z.infer<typeof UpdateOrgIndustrySchema>
+): Promise<ActionResult<void>> {
+  const parsed = UpdateOrgIndustrySchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: "Industria inválida", code: "VALIDATION_ERROR" };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  const admin = createServiceClient();
+  const { error } = await admin
+    .from("organizations")
+    .update({ industry: parsed.data.industry })
+    .eq("id", orgId);
+
+  if (error) {
+    console.error("[updateOrganizationIndustry]", error);
+    return { success: false, error: "No pudimos guardar la industria", code: "INTERNAL_ERROR" };
+  }
+
+  return { success: true, data: undefined };
+}
+
 export async function updateOrganizationName(
   input: z.infer<typeof UpdateOrgNameSchema>
 ): Promise<ActionResult<{ name: string }>> {

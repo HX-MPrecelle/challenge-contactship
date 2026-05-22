@@ -13,6 +13,7 @@ type Insights = {
   nextAction: string;
   riskSignal: string | null;
   leadScore: number;
+  confidence: "high" | "medium" | "low";
 };
 
 export function AiInsightsPanel({ contactId }: { contactId: string }) {
@@ -91,7 +92,12 @@ export function AiInsightsPanel({ contactId }: { contactId: string }) {
         </div>
       ) : insights ? (
         <div className="flex flex-col gap-4">
-          <LeadScoreCard score={insights.leadScore} label={t("contact.insights.leadScore")} />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <LeadScoreCard score={insights.leadScore} label={t("contact.insights.leadScore")} />
+            </div>
+            <ConfidenceBadge confidence={insights.confidence} />
+          </div>
 
           <Card icon={<Sparkles size={12} />} label={t("contact.insights.summary")}>
             {insights.summary}
@@ -204,6 +210,29 @@ function SkeletonState() {
       <div className="h-16 animate-pulse rounded-lg bg-bg-subtle" />
       <div className="h-12 animate-pulse rounded-lg bg-bg-subtle" />
       <div className="h-12 animate-pulse rounded-lg bg-bg-subtle" />
+    </div>
+  );
+}
+
+function ConfidenceBadge({ confidence }: { confidence: "high" | "medium" | "low" }) {
+  const { t } = useI18n();
+  const map = {
+    high:   { cls: "bg-success/10 text-success border-success/30",  dot: "bg-success" },
+    medium: { cls: "bg-warning/10 text-warning border-warning/30",  dot: "bg-warning" },
+    low:    { cls: "bg-error/10 text-error border-error/30",        dot: "bg-error" },
+  } as const;
+  const { cls, dot } = map[confidence];
+  return (
+    <div className={`flex shrink-0 flex-col items-center gap-1 rounded-lg border ${cls} px-3 py-2`}>
+      <span className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
+        {t("contact.insights.confidence")}
+      </span>
+      <div className="flex items-center gap-1.5">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <span className="text-xs font-medium">
+          {t(`contact.insights.confidence.${confidence}` as Parameters<typeof t>[0])}
+        </span>
+      </div>
     </div>
   );
 }

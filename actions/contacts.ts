@@ -88,6 +88,14 @@ export async function updateContact(
       direction: "local_to_hubspot",
     });
 
+    // Mark cached insights as stale so the next page visit regenerates them
+    // with the contact's updated data rather than serving the 24h-old version.
+    await admin
+      .from("ai_insights")
+      .update({ is_stale: true })
+      .eq("contact_id", parsed.data.id)
+      .eq("org_id", orgId);
+
     revalidatePath(`/contacts/${parsed.data.id}`);
     revalidatePath("/contacts");
 
@@ -447,4 +455,67 @@ export async function resolveConflict(
       code: "INTERNAL_ERROR",
     };
   }
+}
+
+const MergeContactsSchema = z.object({
+  primaryId:   z.string().uuid(),
+  secondaryId: z.string().uuid(),
+});
+
+/**
+ * Merge two contacts: enriches the primary with any non-null fields from the
+ * secondary, then archives the secondary. This is a local-only operation —
+ * HubSpot has its own merge endpoint which would need a separate integration.
+ */
+export async function mergeContacts(
+  input: z.infer<typeof MergeContactsSchema>
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = MergeContactsSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Datos inválidos", code: "VALIDATION_ERROR" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  const admin = createServiceClient();
+
+  const [{ data: primary }, { data: secondary }] = await Promise.all([
+    admin.from("contacts").select("*").eq("id", parsed.data.primaryId).eq("org_id", orgId).maybeSingle(),
+    admin.from("contacts").select("*").eq("id", parsed.data.secondaryId).eq("org_id", orgId).maybeSingle(),
+  ]);
+
+  if (!primary || !secondary) {
+    return { success: false, error: "Uno o ambos contactos no encontrados", code: "NOT_FOUND" };
+  }
+
+  // Enrich primary with non-null fields from secondary that are null in primary
+  type ContactUpdate = {
+    first_name?: string | null; last_name?: string | null; phone?: string | null;
+    company?: string | null; job_title?: string | null; website?: string | null;
+    city?: string | null; country?: string | null; properties?: import("@/types/database").Json;
+  };
+  const enrichedFields: ContactUpdate = {};
+  const MERGEABLE = ["first_name", "last_name", "phone", "company", "job_title", "website", "city", "country"] as const;
+  for (const field of MERGEABLE) {
+    if (!primary[field] && secondary[field]) {
+      (enrichedFields as Record<string, unknown>)[field] = secondary[field];
+    }
+  }
+
+  // Merge properties JSONB: secondary fields that don't exist in primary
+  const primaryProps = (primary.properties ?? {}) as Record<string, unknown>;
+  const secondaryProps = (secondary.properties ?? {}) as Record<string, unknown>;
+  enrichedFields.properties = { ...secondaryProps, ...primaryProps } as import("@/types/database").Json;
+
+  await Promise.all([
+    admin.from("contacts").update(enrichedFields).eq("id", parsed.data.primaryId),
+    admin.from("contacts").update({ is_archived: true }).eq("id", parsed.data.secondaryId),
+  ]);
+
+  revalidatePath("/contacts");
+  revalidatePath(`/contacts/${parsed.data.primaryId}`);
+  return { success: true, data: { id: parsed.data.primaryId } };
 }

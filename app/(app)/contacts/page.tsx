@@ -15,7 +15,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 };
 
 const VALID_STATUSES = ["synced", "pending", "conflict", "error"] as const;
@@ -29,8 +29,9 @@ function parseStatus(input: string | undefined): SyncStatus | null {
 }
 
 export default async function ContactsPage({ searchParams }: Props) {
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
   const initialStatusFilter = parseStatus(status);
+  const initialPage = Math.max(0, parseInt(page ?? "0", 10) || 0);
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,6 +88,7 @@ export default async function ContactsPage({ searchParams }: Props) {
         initialContacts={contacts ?? []}
         orgId={orgId}
         initialStatusFilter={initialStatusFilter}
+        initialPage={initialPage}
         density={density}
       />
     </main>

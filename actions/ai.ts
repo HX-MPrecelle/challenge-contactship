@@ -17,10 +17,28 @@ import {
   normalizeHubSpotContact,
 } from "@/lib/hubspot/sync";
 import type { HubSpotContact } from "@/lib/hubspot/contacts";
+import { AI_MODEL_ID } from "@/lib/ai/config";
 
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string; code?: string };
+
+async function getOrgIndustry(
+  admin: ReturnType<typeof createServiceClient>,
+  orgId: string
+): Promise<string | null> {
+  const { data } = await admin
+    .from("organizations")
+    .select("industry")
+    .eq("id", orgId)
+    .maybeSingle();
+  return (data as { industry?: string | null } | null)?.industry ?? null;
+}
+
+function industryCtx(industry: string | null): string {
+  if (!industry) return "";
+  return ` This company operates in the ${industry} industry — tailor your analysis to this vertical's typical sales dynamics, deal cycles, buyer profiles, and competitive landscape.`;
+}
 
 export type SimilarContact = {
   id: string;
@@ -39,14 +57,8 @@ export type DashboardPriority = {
   reason: string;
 };
 
-// In-memory per-process cache keyed by orgId. Survives between requests
-// while the Node worker is warm; on Vercel cold starts it just regenerates.
-// Good enough for a demo + a real production cache would live in Redis.
 const PRIORITIES_TTL_MS = 30 * 60 * 1000;
-const prioritiesCache = new Map<
-  string,
-  { generatedAt: number; priorities: DashboardPriority[] }
->();
+const PRIORITIES_CACHE_KEY = "top_priorities";
 
 const InsightsInputSchema = z.object({
   contactId: z.string().uuid(),
@@ -174,20 +186,27 @@ export async function getTopPriorities(
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const now = Date.now();
-  const cached = prioritiesCache.get(orgId);
-  if (
-    !parsed.data.forceRefresh &&
-    cached &&
-    now - cached.generatedAt < PRIORITIES_TTL_MS
-  ) {
-    return {
-      success: true,
-      data: {
-        priorities: cached.priorities,
-        generatedAt: new Date(cached.generatedAt).toISOString(),
-        fromCache: true,
-      },
-    };
+  const admin0 = createServiceClient();
+
+  if (!parsed.data.forceRefresh) {
+    const { data: cached } = await admin0
+      .from("org_ai_cache")
+      .select("content, generated_at, expires_at")
+      .eq("org_id", orgId)
+      .eq("cache_key", PRIORITIES_CACHE_KEY)
+      .maybeSingle();
+
+    if (cached && new Date(cached.expires_at).getTime() > now) {
+      const content = cached.content as { priorities: DashboardPriority[] };
+      return {
+        success: true,
+        data: {
+          priorities: content.priorities,
+          generatedAt: cached.generated_at,
+          fromCache: true,
+        },
+      };
+    }
   }
 
   const { data: candidates, error } = await supabase
@@ -236,11 +255,16 @@ export async function getTopPriorities(
     })
     .join("\n");
 
+  const industry = await getOrgIndustry(admin0, orgId);
+  const industryInstr = industry
+    ? ` El cliente opera en la industria ${industry} — considerá el ciclo de ventas y perfiles compradores típicos de ese vertical.`
+    : "";
+
   try {
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: openai(AI_MODEL_ID),
       schema: TopPrioritiesAiSchema,
-      system: `Sos un asistente de ventas B2B. De un set de contactos del CRM, tenés que elegir los 3 que el usuario debería priorizar esta semana. Criterios: cercanía al cierre (lifecycle stage avanzado), datos completos, recencia de actividad, y oportunidad clara.
+      system: `Sos un asistente de ventas B2B. De un set de contactos del CRM, tenés que elegir los 3 que el usuario debería priorizar esta semana. Criterios: cercanía al cierre (lifecycle stage avanzado), datos completos, recencia de actividad, y oportunidad clara.${industryInstr}
 
 Reglas:
 - Hablá siempre en español rioplatense.
@@ -268,7 +292,19 @@ ${candidateList}`,
         };
       });
 
-    prioritiesCache.set(orgId, { generatedAt: now, priorities });
+    const expiresAt = new Date(now + PRIORITIES_TTL_MS).toISOString();
+    await admin0
+      .from("org_ai_cache")
+      .upsert(
+        {
+          org_id: orgId,
+          cache_key: PRIORITIES_CACHE_KEY,
+          content: { priorities } as unknown as import("@/types/database").Json,
+          generated_at: new Date(now).toISOString(),
+          expires_at: expiresAt,
+        },
+        { onConflict: "org_id,cache_key" }
+      );
 
     return {
       success: true,
@@ -666,7 +702,7 @@ export async function summarizeFilteredContacts(
 
   try {
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: openai(AI_MODEL_ID),
       system: `Sos un asistente de ventas B2B. Vas a recibir un grupo de contactos del CRM que matchearon un filtro en lenguaje natural. Tu tarea es:
 
 1. Identificar patrones comunes (industria/cargo/país/etapa concentrados).
@@ -716,7 +752,7 @@ const PipelineAlertSchema = z.object({
         description: z.string().max(220),
         count: z.number().int().min(0),
         cta: z.string().max(60),
-        filterPath: z.string().max(100).optional(),
+        filterPath: z.string().max(100).nullable(),
       })
     )
     .min(1)
@@ -764,11 +800,13 @@ export async function generatePipelineAlerts(input: {
     ? "Respond in English."
     : "Respondé en español rioplatense.";
 
+  const industry = await getOrgIndustry(admin, orgId);
+
   try {
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: openai(AI_MODEL_ID),
       schema: PipelineAlertSchema,
-      system: `You are a B2B sales pipeline analyst. Generate actionable pipeline health alerts based on CRM metrics. ${langInstr} Be specific with numbers. Use appropriate emojis (⚠️ warning, 🔥 critical, ✅ good, 💡 opportunity).`,
+      system: `You are a B2B sales pipeline analyst. Generate actionable pipeline health alerts based on CRM metrics.${industryCtx(industry)} ${langInstr} Be specific with numbers. Use appropriate emojis (⚠️ warning, 🔥 critical, ✅ good, 💡 opportunity).`,
       prompt: `Pipeline stats:
 - Total contacts: ${totalContacts}
 - Stalled opportunities (>30 days no update): ${stalledOpps}
@@ -852,12 +890,13 @@ export async function analyzeWinLoss(input: {
   const lossesText = (losses ?? []).map(fmt as (c: unknown) => string).join("\n");
 
   const langInstr = locale === "en" ? "Respond in English." : "Respondé en español rioplatense.";
+  const industry = await getOrgIndustry(admin, orgId);
 
   try {
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: openai(AI_MODEL_ID),
       schema: WinLossSchema,
-      system: `You are a B2B sales strategist. Analyze won and lost deals and extract strategic patterns. ${langInstr} Be specific, actionable, and data-driven. Reference industries, roles, company sizes from the data.`,
+      system: `You are a B2B sales strategist. Analyze won and lost deals and extract strategic patterns.${industryCtx(industry)} ${langInstr} Be specific, actionable, and data-driven. Reference industries, roles, company sizes from the data.`,
       prompt: `WON customers (${wins?.length ?? 0} contacts):
 ${winsText}
 
@@ -885,10 +924,10 @@ const CompetitiveSchema = z.object({
     lostAgainst: z.number().int().min(0),
     activeDeals: z.number().int().min(0),
     differentiators: z.array(z.string().max(120)).max(3),
-    quote: z.string().max(220).optional(),
+    quote: z.string().max(220).nullable(),
   })).max(10),
   summary: z.string().max(300),
-  noCompetitorsFound: z.boolean().optional(),
+  noCompetitorsFound: z.boolean().nullable(),
 });
 
 export type CompetitiveAnalysis = z.infer<typeof CompetitiveSchema>;
@@ -927,12 +966,13 @@ export async function extractCompetitorMentions(input: {
   }).join("\n\n");
 
   const langInstr = locale === "en" ? "Respond in English." : "Respondé en español rioplatense.";
+  const industry = await getOrgIndustry(admin, orgId);
 
   try {
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: openai(AI_MODEL_ID),
       schema: CompetitiveSchema,
-      system: `You are a competitive intelligence analyst. Extract competitor mentions from CRM notes and analyze win/loss context. ${langInstr} Be precise: only include competitors explicitly mentioned by name. WON = we won, LOST = we lost, ACTIVE = deal in progress.`,
+      system: `You are a competitive intelligence analyst. Extract competitor mentions from CRM notes and analyze win/loss context.${industryCtx(industry)} ${langInstr} Be precise: only include competitors explicitly mentioned by name. WON = we won, LOST = we lost, ACTIVE = deal in progress.`,
       prompt: `CRM notes from ${withNotes.length} contacts:\n\n${notesText}\n\nExtract all competitor mentions with win/loss context and key differentiators our team uses against them.`,
     });
     return { success: true, data: object, notesCount: withNotes.length };
@@ -940,4 +980,103 @@ export async function extractCompetitorMentions(input: {
     console.error("[extractCompetitorMentions]", err);
     return { success: false, error: "No se pudo analizar la inteligencia competitiva." };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DUPLICATE DETECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type DuplicateContact = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  company: string | null;
+  jobTitle: string | null;
+  lifecycleStage: string | null;
+};
+
+export type DuplicateGroup = {
+  primary: DuplicateContact;
+  duplicate: DuplicateContact;
+  similarity: number;
+};
+
+/**
+ * Find semantically duplicate contacts using pgvector cosine similarity.
+ * Uses a high threshold (0.88) to only surface strong matches.
+ * Returns at most 20 groups to keep the UI manageable.
+ */
+export async function detectDuplicates(): Promise<
+  ActionResult<{ groups: DuplicateGroup[] }>
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  const admin = createServiceClient();
+
+  // Ensure all contacts have embeddings before searching
+  await backfillMissingEmbeddings(admin, orgId);
+
+  const { data: contacts, error } = await admin
+    .from("contacts")
+    .select("id, first_name, last_name, email, company, job_title, lifecycle_stage, embedding")
+    .eq("org_id", orgId)
+    .eq("is_archived", false)
+    .not("embedding", "is", null)
+    .limit(300);
+
+  if (error || !contacts) {
+    return { success: false, error: "No se pudo acceder a los contactos", code: "INTERNAL_ERROR" };
+  }
+
+  const seen = new Set<string>();
+  const groups: DuplicateGroup[] = [];
+
+  for (const contact of contacts) {
+    if (groups.length >= 20) break;
+
+    const { data: matches } = await admin.rpc("match_contacts", {
+      query_embedding: contact.embedding as unknown as string,
+      match_org_id: orgId,
+      match_threshold: 0.88,
+      match_count: 3,
+    });
+
+    for (const match of matches ?? []) {
+      if (match.id === contact.id) continue;
+
+      const pairKey = [contact.id, match.id].sort().join("|");
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+
+      groups.push({
+        primary: {
+          id: contact.id,
+          firstName: contact.first_name,
+          lastName: contact.last_name,
+          email: contact.email,
+          company: contact.company,
+          jobTitle: contact.job_title,
+          lifecycleStage: contact.lifecycle_stage,
+        },
+        duplicate: {
+          id: match.id,
+          firstName: match.first_name,
+          lastName: match.last_name,
+          email: match.email,
+          company: match.company,
+          jobTitle: match.job_title,
+          lifecycleStage: match.lifecycle_stage,
+        },
+        similarity: match.similarity,
+      });
+    }
+  }
+
+  return { success: true, data: { groups } };
 }

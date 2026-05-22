@@ -44,6 +44,8 @@ export const es = {
   "dashboard.priorities.footer": "Top {n} sugeridos por IA sobre los 30 contactos más recientes · actualiza cada 30 min",
   "dashboard.priorities.noContacts": "Aún no hay suficientes contactos para sugerir prioridades.",
   "dashboard.priorities.error": "La IA no pudo elegir prioridades. Intentá de nuevo.",
+  "dashboard.quicklink.insights": "Insights de IA",
+  "dashboard.quicklink.insights.desc": "Salud del pipeline, prioridades de la semana y análisis de competidores.",
   "dashboard.quicklink.chat": "Hablá con tu base",
   "dashboard.quicklink.chat.desc": "Patrones, prioridades, gaps. El chat tiene contexto de todos tus contactos.",
   "dashboard.quicklink.contacts": "Ver todos los contactos",
@@ -440,6 +442,15 @@ export const es = {
   "insights.generating": "Analizando datos...",
   "insights.error": "No se pudo generar el análisis. Intentá de nuevo.",
   "insights.noData": "Sin datos suficientes. Importá más contactos primero.",
+  "settings.general.industry": "Industria",
+  "settings.general.industryDesc": "Vertical de tu empresa. La IA adapta el análisis de pipeline, prioridades y competidores a tu sector.",
+  "settings.industry.updated": "Industria actualizada",
+  "settings.industry.notSet": "Sin definir",
+  "settings.industry.placeholder": "Seleccioná tu industria",
+  "insights.tab.pipeline": "Salud del pipeline",
+  "insights.tab.priorities": "Prioridades",
+  "insights.tab.winloss": "Win & Loss",
+  "insights.tab.competitive": "Intel competitiva",
   "pipeline.health.title": "Salud del pipeline",
   "pipeline.health.subtitle": "Alertas proactivas generadas por IA.",
   "pipeline.health.loading": "Analizando tu pipeline...",
@@ -465,6 +476,52 @@ export const es = {
   "competitive.active": "Activos",
   "competitive.differentiators": "Diferenciadores",
   "competitive.noData": "No hay notas con menciones de competidores todavía.",
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  "nav.agent": "Agente IA",
+
+  // ── Command Palette ─────────────────────────────────────────────────────────
+  "cmd.title": "Comando rápido",
+  "cmd.placeholder": "Buscar página o acción…",
+  "cmd.noResults": "Sin resultados.",
+  "cmd.hint": "para abrir/cerrar",
+
+  // ── Agent Inbox ─────────────────────────────────────────────────────────────
+  "agent.title": "Agente IA",
+  "agent.subtitle": "Acciones autónomas recomendadas por el agente.",
+  "agent.run": "Ejecutar ahora",
+  "agent.running": "Analizando…",
+  "agent.empty.title": "Todo en orden",
+  "agent.empty.desc": "No hay contactos en riesgo en este momento. El agente vuelve a revisar todos los días.",
+  "agent.action.followUpEmail": "Email de seguimiento",
+  "agent.action.reEngagement": "Re-engagement",
+  "agent.action.riskAlert": "Alerta de riesgo",
+  "agent.action.opportunity": "Oportunidad",
+  "agent.card.reasoning": "Razonamiento",
+  "agent.card.draft": "Ver borrador",
+  "agent.card.approve": "Aprobar",
+  "agent.card.dismiss": "Descartar",
+  "agent.card.approved": "Aprobado",
+  "agent.card.dismissed": "Descartado",
+  "agent.ran": "Agente ejecutado — {n} acción{plural} generada{pluralf}.",
+  "agent.error": "El agente no pudo ejecutarse. Intentá de nuevo.",
+  "agent.pendingCount": "{n} pendiente{plural}",
+
+  // ── Insights Confidence ──────────────────────────────────────────────────────
+  "contact.insights.confidence": "Confianza",
+  "contact.insights.confidence.high": "Alta",
+  "contact.insights.confidence.medium": "Media",
+  "contact.insights.confidence.low": "Baja",
+
+  // ── Duplicates ───────────────────────────────────────────────────────────────
+  "duplicates.title": "Contactos duplicados",
+  "duplicates.subtitle": "Detectados por similitud semántica.",
+  "duplicates.merge": "Mergear",
+  "duplicates.keepSeparate": "Mantener separados",
+  "duplicates.mergeDesc": "El primer contacto queda como principal. El segundo se archiva.",
+  "duplicates.empty": "No se detectaron duplicados.",
+  "duplicates.scanning": "Analizando…",
+  "duplicates.link": "Ver posibles duplicados ({n})",
 };
 
 export type TranslationKey = keyof typeof es;

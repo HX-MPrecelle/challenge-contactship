@@ -5,8 +5,10 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
+import { AI_MODEL_ID } from "@/lib/ai/config";
+
 const INSIGHTS_TTL_MS = 24 * 60 * 60 * 1000;
-const MODEL = openai("gpt-4o-mini");
+const MODEL = openai(AI_MODEL_ID);
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -15,6 +17,7 @@ export type ContactInsights = {
   nextAction: string;
   riskSignal: string | null;
   leadScore: number;
+  confidence: "high" | "medium" | "low";
 };
 
 export type CachedInsights = {
@@ -50,6 +53,11 @@ const InsightsSchema = z.object({
     .max(100)
     .describe(
       "Puntuación 0-100. 80-100: datos completos + etapa avanzada + actividad reciente. 0-19: casi vacío + sin actividad."
+    ),
+  confidence: z
+    .enum(["high", "medium", "low"])
+    .describe(
+      "Nivel de confianza del análisis: high=datos completos+etapa avanzada, medium=datos parciales, low=datos mínimos o contacto sin actividad."
     ),
 });
 
@@ -120,7 +128,7 @@ export async function getOrGenerateInsights(
   for (const row of existing ?? []) {
     byType.set(row.insight_type, row);
   }
-  const allFresh = ["summary", "next_action", "risk_signal", "lead_score"].every(
+  const allFresh = ["summary", "next_action", "risk_signal", "lead_score", "confidence"].every(
     (t) => {
       const row = byType.get(t);
       if (!row) return false;
@@ -131,12 +139,14 @@ export async function getOrGenerateInsights(
   );
 
   if (allFresh) {
+    const rawConfidence = byType.get("confidence")?.content ?? "medium";
     return {
       insights: {
         summary: byType.get("summary")!.content,
         nextAction: byType.get("next_action")!.content,
         riskSignal: nullableContent(byType.get("risk_signal")?.content),
         leadScore: Number(byType.get("lead_score")!.content),
+        confidence: (rawConfidence === "high" || rawConfidence === "low") ? rawConfidence : "medium",
       },
       generatedAt: byType.get("summary")!.generated_at,
       fromCache: true,
@@ -178,6 +188,7 @@ export async function getOrGenerateInsights(
       insight_type: "summary",
       content: object.summary,
       expires_at: expiresAt,
+      model_version: AI_MODEL_ID,
     },
     {
       org_id: orgId,
@@ -185,6 +196,7 @@ export async function getOrGenerateInsights(
       insight_type: "next_action",
       content: object.next_action,
       expires_at: expiresAt,
+      model_version: AI_MODEL_ID,
     },
     {
       org_id: orgId,
@@ -192,6 +204,7 @@ export async function getOrGenerateInsights(
       insight_type: "risk_signal",
       content: object.risk_signal ?? "",
       expires_at: expiresAt,
+      model_version: AI_MODEL_ID,
     },
     {
       org_id: orgId,
@@ -199,6 +212,15 @@ export async function getOrGenerateInsights(
       insight_type: "lead_score",
       content: String(object.lead_score),
       expires_at: expiresAt,
+      model_version: AI_MODEL_ID,
+    },
+    {
+      org_id: orgId,
+      contact_id: contactId,
+      insight_type: "confidence",
+      content: object.confidence,
+      expires_at: expiresAt,
+      model_version: AI_MODEL_ID,
     },
   ]);
 
@@ -208,6 +230,7 @@ export async function getOrGenerateInsights(
       nextAction: object.next_action,
       riskSignal: object.risk_signal,
       leadScore: object.lead_score,
+      confidence: object.confidence,
     },
     generatedAt: new Date(now).toISOString(),
     fromCache: false,

@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 import { BackButton } from "@/components/layout/BackButton";
-import { WinLossAnalysisSection } from "@/components/insights/WinLossAnalysis";
-import { CompetitiveIntelligenceSection } from "@/components/insights/CompetitiveIntelligence";
+import { InsightsTabs } from "@/components/insights/InsightsTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +22,7 @@ export default async function InsightsPage() {
         <p className="mt-1 text-sm text-text-secondary">{t("insights.subtitle")}</p>
       </header>
 
-      <div className="flex flex-col gap-12">
-        <WinLossAnalysisSection />
-
-        <div className="border-t border-border-default" />
-
-        <CompetitiveIntelligenceSection />
-      </div>
+      <InsightsTabs />
     </main>
   );
 }

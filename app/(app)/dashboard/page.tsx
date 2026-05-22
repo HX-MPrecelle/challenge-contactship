@@ -9,8 +9,6 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
-import { PipelineHealthWidget } from "@/components/dashboard/PipelineHealthWidget";
 import { createClient } from "@/lib/supabase/server";
 import {
   createT,
@@ -19,6 +17,7 @@ import {
   SUPPORTED_LOCALES,
   type Locale,
 } from "@/lib/i18n/index";
+import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
 
 export const dynamic = "force-dynamic";
 
@@ -168,11 +167,15 @@ export default async function DashboardPage() {
         total={total ?? 0}
       />
 
-      <PipelineHealthWidget />
-
       <DashboardPriorities />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <QuickLink
+          icon={<Sparkles size={14} />}
+          title={t("dashboard.quicklink.insights")}
+          description={t("dashboard.quicklink.insights.desc")}
+          href="/insights"
+        />
         <QuickLink
           icon={<MessageSquare size={14} />}
           title={t("dashboard.quicklink.chat")}

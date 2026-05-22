@@ -5,6 +5,28 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 
+export async function updateOrgIndustry(
+  industry: string | null
+): Promise<{ success: true } | { success: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autenticado" };
+
+  const orgId = user.user_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización" };
+
+  const admin = createServiceClient();
+  const { error } = await admin
+    .from("organizations")
+    .update({ industry: industry ?? null })
+    .eq("id", orgId);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
 export async function updateOrgName(
   name: string
 ): Promise<{ success: true } | { success: false; error: string }> {

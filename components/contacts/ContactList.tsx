@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n/context";
 import { BarChart3, Loader2, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { FilterSummaryDialog } from "@/components/contacts/FilterSummaryDialog";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
 import { naturalLanguageSearch } from "@/actions/ai";
+import { matchesFilter, type AiFilterClause } from "@/lib/utils/contact-filters";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 
@@ -35,11 +37,7 @@ type ContactRow = Pick<
 >;
 
 type AiFilter = {
-  filters: {
-    field: string;
-    operator: "eq" | "ilike" | "lt" | "gt" | "lte" | "gte";
-    value: string;
-  }[];
+  filters: AiFilterClause[];
   explanation: string;
   query: string;
 };
@@ -48,6 +46,7 @@ type Props = {
   initialContacts: ContactRow[];
   orgId: string;
   initialStatusFilter?: SyncStatus | null;
+  initialPage?: number;
   density?: "normal" | "compact";
 };
 
@@ -67,9 +66,12 @@ export function ContactList({
   initialContacts,
   orgId,
   initialStatusFilter,
+  initialPage = 0,
   density = "normal",
 }: Props) {
   const { t } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const rowPy = density === "compact" ? "py-1.5" : "py-3";
 
   // Build translated filter arrays inside the component so they react to locale changes
@@ -94,7 +96,18 @@ export function ContactList({
     initialStatusFilter ?? null
   );
   const [lifecycleFilter, setLifecycleFilter] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(initialPage);
+
+  function navigatePage(next: number) {
+    setPage(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === 0) {
+      params.delete("page");
+    } else {
+      params.set("page", String(next));
+    }
+    router.replace(`/contacts?${params.toString()}`, { scroll: false });
+  }
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -172,8 +185,8 @@ export function ContactList({
     return result;
   }, [contacts, query, aiFilter, statusFilter]);
 
-  // Reset to page 0 whenever any filter changes
-  useEffect(() => { setPage(0); }, [statusFilter, lifecycleFilter, aiFilter, query]);
+  // Reset to page 0 whenever any filter changes (also clears ?page= from URL)
+  useEffect(() => { navigatePage(0); }, [statusFilter, lifecycleFilter, aiFilter, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
@@ -528,7 +541,7 @@ export function ContactList({
             {/* ‹ prev arrow */}
             <button
               type="button"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              onClick={() => navigatePage(Math.max(0, page - 1))}
               disabled={page === 0}
               className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle disabled:opacity-40"
             >
@@ -539,7 +552,7 @@ export function ContactList({
             {page > 0 ? (
               <button
                 type="button"
-                onClick={() => setPage(page - 1)}
+                onClick={() => navigatePage(page - 1)}
                 className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle"
               >
                 {page}
@@ -560,7 +573,7 @@ export function ContactList({
             {page < totalPages - 1 ? (
               <button
                 type="button"
-                onClick={() => setPage(page + 1)}
+                onClick={() => navigatePage(page + 1)}
                 className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle"
               >
                 {page + 2}
@@ -572,7 +585,7 @@ export function ContactList({
             {/* › next arrow */}
             <button
               type="button"
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              onClick={() => navigatePage(Math.min(totalPages - 1, page + 1))}
               disabled={page === totalPages - 1}
               className="flex h-7 w-7 items-center justify-center rounded-md border border-border-default text-xs text-text-secondary transition-colors hover:bg-bg-subtle disabled:opacity-40"
             >
@@ -585,30 +598,3 @@ export function ContactList({
   );
 }
 
-function matchesFilter(
-  contact: ContactRow,
-  filter: AiFilter["filters"][number]
-): boolean {
-  const rawValue = contact[filter.field as keyof ContactRow];
-  if (rawValue === null || rawValue === undefined) return false;
-  const fieldValue = String(rawValue);
-
-  switch (filter.operator) {
-    case "eq":
-      return fieldValue.toLowerCase() === filter.value.toLowerCase();
-    case "ilike": {
-      const needle = filter.value.replace(/%/g, "").toLowerCase();
-      return fieldValue.toLowerCase().includes(needle);
-    }
-    case "lt":
-      return new Date(fieldValue).getTime() < new Date(filter.value).getTime();
-    case "gt":
-      return new Date(fieldValue).getTime() > new Date(filter.value).getTime();
-    case "lte":
-      return new Date(fieldValue).getTime() <= new Date(filter.value).getTime();
-    case "gte":
-      return new Date(fieldValue).getTime() >= new Date(filter.value).getTime();
-    default:
-      return false;
-  }
-}

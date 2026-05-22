@@ -25,7 +25,7 @@ export default async function OnboardingPage({ searchParams }: Props) {
   }
 
   const [{ data: org }, { data: connection }] = await Promise.all([
-    supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
+    supabase.from("organizations").select("name, industry").eq("id", orgId).maybeSingle(),
     supabase
       .from("hubspot_connections")
       .select("portal_id, portal_name, connected_at, needs_reconnect")
@@ -34,10 +34,10 @@ export default async function OnboardingPage({ searchParams }: Props) {
   ]);
 
   const requestedStep = Number(params.step);
-  const initialStep = Number.isFinite(requestedStep) && requestedStep >= 1 && requestedStep <= 4
+  const initialStep = Number.isFinite(requestedStep) && requestedStep >= 1 && requestedStep <= 5
     ? requestedStep
     : connection
-      ? 3
+      ? 4
       : 1;
 
   return (
@@ -45,6 +45,7 @@ export default async function OnboardingPage({ searchParams }: Props) {
       <OnboardingStepper
         initialStep={initialStep}
         initialOrgName={org?.name ?? ""}
+        initialIndustry={org?.industry ?? null}
         hubspotConnected={Boolean(connection) && !connection?.needs_reconnect}
         hubspotPortalName={connection?.portal_name ?? null}
         orgId={orgId}

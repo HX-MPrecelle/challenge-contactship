@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { after } from "next/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { embedText } from "@/lib/ai/memory";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -89,14 +91,35 @@ export async function saveMessage(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const { error } = await (supabase as AnyClient).from("chat_messages").insert({
-    conversation_id: input.conversationId,
-    role: input.role,
-    content: input.content,
-    citations: input.citations ?? [],
-  });
+  const { data: inserted, error } = await (supabase as AnyClient)
+    .from("chat_messages")
+    .insert({
+      conversation_id: input.conversationId,
+      role: input.role,
+      content: input.content,
+      citations: input.citations ?? [],
+    })
+    .select("id")
+    .single();
 
   if (error) return { success: false, error: error.message };
+
+  // Embed user messages in background so they're searchable as memory context
+  // in future conversations. Assistant messages are skipped to save cost.
+  if (input.role === "user" && inserted?.id) {
+    const messageId = inserted.id as string;
+    const content = input.content;
+    after(async () => {
+      const embedding = await embedText(content);
+      if (!embedding) return;
+      const admin = createServiceClient();
+      await (admin as AnyClient)
+        .from("chat_messages")
+        .update({ embedding: embedding as unknown as string })
+        .eq("id", messageId);
+    });
+  }
+
   return { success: true };
 }
 

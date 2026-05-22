@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { retrieveRelevantContacts } from "@/lib/ai/chat";
+import { embedText, retrieveRelatedMessages, formatMemoryContext } from "@/lib/ai/memory";
 import { getPersonaInstructions, type ChatPersona } from "@/lib/ai/persona";
 import type { ChatUIMessage, ContactCitation } from "@/types/chat";
 
@@ -85,7 +86,23 @@ export async function POST(request: NextRequest) {
 
   const total = totalContacts ?? 0;
 
-  const system = `${SYSTEM_PROMPT}\n\n${getPersonaInstructions(persona)}\n\nTotal CRM contacts: ${total}. Use your tools to access them.`;
+  // Retrieve semantically related past messages for memory context
+  // UIMessage in AI SDK v6 stores content in `parts` — extract the last text part.
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
+  let memoryContext = "";
+  if (lastUserMessage) {
+    const parts = (lastUserMessage as unknown as { parts?: { type: string; text?: string }[] }).parts ?? [];
+    const lastText = parts.find((p) => p.type === "text")?.text ?? "";
+    if (lastText) {
+      const queryEmbedding = await embedText(lastText);
+      if (queryEmbedding) {
+        const related = await retrieveRelatedMessages(admin, orgId, user.id, queryEmbedding);
+        memoryContext = formatMemoryContext(related);
+      }
+    }
+  }
+
+  const system = `${SYSTEM_PROMPT}\n\n${getPersonaInstructions(persona)}\n\nTotal CRM contacts: ${total}. Use your tools to access them.${memoryContext}`;
 
   const modelMessages = await convertToModelMessages(messages);
 

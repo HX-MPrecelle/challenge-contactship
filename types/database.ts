@@ -232,23 +232,121 @@ export type Database = {
           },
         ]
       }
+      agent_actions: {
+        Row: {
+          id: string
+          org_id: string
+          contact_id: string | null
+          run_id: string
+          action_type: "follow_up_email" | "re_engagement" | "risk_alert" | "opportunity"
+          title: string
+          reasoning: string
+          draft_subject: string | null
+          draft_body: string | null
+          status: "pending" | "approved" | "dismissed" | "acted"
+          created_at: string
+          acted_at: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          contact_id?: string | null
+          run_id: string
+          action_type: "follow_up_email" | "re_engagement" | "risk_alert" | "opportunity"
+          title: string
+          reasoning: string
+          draft_subject?: string | null
+          draft_body?: string | null
+          status?: "pending" | "approved" | "dismissed" | "acted"
+          created_at?: string
+          acted_at?: string | null
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          contact_id?: string | null
+          run_id?: string
+          action_type?: "follow_up_email" | "re_engagement" | "risk_alert" | "opportunity"
+          title?: string
+          reasoning?: string
+          draft_subject?: string | null
+          draft_body?: string | null
+          status?: "pending" | "approved" | "dismissed" | "acted"
+          created_at?: string
+          acted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_actions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_actions_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_ai_cache: {
+        Row: {
+          id: string
+          org_id: string
+          cache_key: string
+          content: Json
+          generated_at: string
+          expires_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          cache_key: string
+          content: Json
+          generated_at?: string
+          expires_at: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          cache_key?: string
+          content?: Json
+          generated_at?: string
+          expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_ai_cache_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
           email_domain: string | null
           id: string
+          industry: string | null
           name: string
         }
         Insert: {
           created_at?: string
           email_domain?: string | null
           id?: string
+          industry?: string | null
           name: string
         }
         Update: {
           created_at?: string
           email_domain?: string | null
           id?: string
+          industry?: string | null
           name?: string
         }
         Relationships: []
@@ -337,6 +435,23 @@ export type Database = {
           local_updated_at: string
           similarity: number
           sync_status: string
+        }[]
+      }
+      match_messages: {
+        Args: {
+          query_embedding: string
+          match_user_id: string
+          match_org_id: string
+          match_threshold?: number
+          match_count?: number
+        }
+        Returns: {
+          id: string
+          role: string
+          content: string
+          conversation_id: string
+          created_at: string
+          similarity: number
         }[]
       }
       update_hubspot_token_secret: {

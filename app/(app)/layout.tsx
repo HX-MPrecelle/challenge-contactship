@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -32,6 +33,7 @@ export default async function AppLayout({
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
+      {showSidebar && <CommandPalette locale={locale} />}
     </TooltipProvider>
   );
 }

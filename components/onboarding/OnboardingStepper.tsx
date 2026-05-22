@@ -23,13 +23,16 @@ import {
   markOnboardingComplete,
   previewContactCount,
   updateOrganizationName,
+  updateOrganizationIndustry,
 } from "@/app/(app)/onboarding/actions";
+import { INDUSTRIES } from "@/lib/industries";
 
 const STEPS = [
   { id: 1, label: "Bienvenida" },
-  { id: 2, label: "Conectar HubSpot" },
-  { id: 3, label: "Seleccionar contactos" },
-  { id: 4, label: "Sincronización" },
+  { id: 2, label: "Tu empresa" },
+  { id: 3, label: "Conectar HubSpot" },
+  { id: 4, label: "Seleccionar contactos" },
+  { id: 5, label: "Sincronización" },
 ] as const;
 
 export type Selection =
@@ -39,6 +42,7 @@ export type Selection =
 type Props = {
   initialStep: number;
   initialOrgName: string;
+  initialIndustry: string | null;
   hubspotConnected: boolean;
   hubspotPortalName: string | null;
   orgId: string;
@@ -48,6 +52,7 @@ type Props = {
 export function OnboardingStepper({
   initialStep,
   initialOrgName,
+  initialIndustry,
   hubspotConnected,
   hubspotPortalName,
   orgId,
@@ -82,21 +87,28 @@ export function OnboardingStepper({
           />
         )}
         {step === 2 && (
-          <ConnectStep
-            isConnected={hubspotConnected}
-            portalName={hubspotPortalName}
+          <IndustryStep
+            initialIndustry={initialIndustry}
             onContinue={() => setStep(3)}
+            onSkip={() => setStep(3)}
           />
         )}
         {step === 3 && (
+          <ConnectStep
+            isConnected={hubspotConnected}
+            portalName={hubspotPortalName}
+            onContinue={() => setStep(4)}
+          />
+        )}
+        {step === 4 && (
           <SelectStep
             selection={selection}
             onSelectionChange={setSelection}
-            onContinue={() => setStep(4)}
-            onBack={() => setStep(2)}
+            onContinue={() => setStep(5)}
+            onBack={() => setStep(3)}
           />
         )}
-        {step === 4 && <SyncStep orgId={orgId} selection={selection} />}
+        {step === 5 && <SyncStep orgId={orgId} selection={selection} />}
       </div>
     </div>
   );
@@ -219,6 +231,90 @@ function WelcomeStep({
         )}
       </Button>
     </form>
+  );
+}
+
+function IndustryStep({
+  initialIndustry,
+  onContinue,
+  onSkip,
+}: {
+  initialIndustry: string | null;
+  onContinue: () => void;
+  onSkip: () => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(initialIndustry);
+  const [isPending, startTransition] = useTransition();
+
+  function handleContinue() {
+    startTransition(async () => {
+      if (selected) {
+        await updateOrganizationIndustry({ industry: selected });
+      }
+      onContinue();
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-col items-center gap-3 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-subtle text-2xl">
+          🏢
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <h2 className="font-heading text-xl font-semibold text-text-primary">
+            ¿En qué industria opera tu empresa?
+          </h2>
+          <p className="text-sm text-text-secondary">
+            La IA adapta el análisis de pipeline, prioridades y competidores a tu vertical.
+          </p>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-3 gap-2">
+        {INDUSTRIES.map((ind) => (
+          <button
+            key={ind.value}
+            type="button"
+            onClick={() => setSelected(ind.value)}
+            className={[
+              "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors",
+              selected === ind.value
+                ? "border-brand bg-brand-subtle"
+                : "border-border-default bg-bg-elevated hover:border-border-strong",
+            ].join(" ")}
+          >
+            <span className="text-xl leading-none">{ind.emoji}</span>
+            <span className="text-[11px] font-medium leading-tight text-text-primary">
+              {ind.labelEs}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onSkip}
+          className="text-xs text-text-muted underline-offset-2 hover:text-text-secondary hover:underline"
+        >
+          Omitir por ahora
+        </button>
+        <Button onClick={handleContinue} disabled={!selected || isPending}>
+          {isPending ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              <span>Guardando...</span>
+            </>
+          ) : (
+            <>
+              <span>Continuar</span>
+              <ArrowRight size={14} />
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
   );
 }
 
