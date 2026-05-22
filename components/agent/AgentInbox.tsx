@@ -2,22 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   Bot,
   Check,
   ChevronDown,
   ChevronUp,
-  Loader2,
+  ExternalLink,
   Mail,
   TriangleAlert,
+  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n/context";
+import { AgentRunModal } from "@/components/agent/AgentRunModal";
 import {
-  runAgentAction,
   dismissAgentAction,
   approveAgentAction,
   type AgentActionRow,
@@ -30,106 +31,77 @@ const ACTION_ICON: Record<string, React.ReactNode> = {
   opportunity:     <Bot size={14} />,
 };
 
-const ACTION_TONE: Record<string, string> = {
-  follow_up_email: "border-brand/30 bg-brand-subtle text-brand-on-subtle",
-  re_engagement:   "border-warning/30 bg-warning-subtle text-warning",
-  risk_alert:      "border-error/30 bg-error-subtle text-error",
-  opportunity:     "border-success/30 bg-success-subtle text-success",
+const ACTION_TONE: Record<string, { card: string; icon: string; badge: string }> = {
+  follow_up_email: {
+    card:  "border-brand/20",
+    icon:  "border-brand/30 bg-brand-subtle text-brand",
+    badge: "bg-brand/10 text-brand",
+  },
+  re_engagement: {
+    card:  "border-warning/20",
+    icon:  "border-warning/30 bg-warning-subtle text-warning",
+    badge: "bg-warning/10 text-warning",
+  },
+  risk_alert: {
+    card:  "border-error/20",
+    icon:  "border-error/30 bg-error-subtle text-error",
+    badge: "bg-error/10 text-error",
+  },
+  opportunity: {
+    card:  "border-success/20",
+    icon:  "border-success/30 bg-success-subtle text-success",
+    badge: "bg-success/10 text-success",
+  },
 };
 
-const THRESHOLD_PRESETS = [
-  { label: "1 día",   days: 1 },
-  { label: "7 días",  days: 7 },
-  { label: "14 días", days: 14 },
-  { label: "30 días", days: 30 },
-  { label: "60 días", days: 60 },
-  { label: "Todos",   days: 0 },
-] as const;
+const ACTION_LABEL: Record<string, string> = {
+  follow_up_email: "Email de seguimiento",
+  re_engagement:   "Re-engagement",
+  risk_alert:      "Alerta de riesgo",
+  opportunity:     "Oportunidad",
+};
 
 export function AgentInbox({
   initialActions,
   locale,
+  orgId,
 }: {
   initialActions: AgentActionRow[];
   locale: string;
+  orgId: string;
 }) {
   const { t } = useI18n();
   const router = useRouter();
   const [actions, setActions] = useState<AgentActionRow[]>(initialActions);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [isRunning, startRun] = useTransition();
-  const [thresholdDays, setThresholdDays] = useState(30);
+  const [openId, setOpenId] = useState<string | null>(null); // accordion: only one open
 
-  function toggleExpand(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function handleRun() {
-    startRun(async () => {
-      const result = await runAgentAction({ locale: locale as "es" | "en", thresholdDays });
-      if (!result.success) {
-        toast.error(t("agent.error"));
-        return;
-      }
-      const n = result.data.actionsGenerated;
-      toast.success(
-        t("agent.ran", { n, plural: n === 1 ? "" : "es", pluralf: n === 1 ? "" : "s" })
-      );
-      router.refresh();
-    });
+  function toggleOpen(id: string) {
+    setOpenId((prev) => (prev === id ? null : id));
   }
 
   async function handleDismiss(id: string) {
     const result = await dismissAgentAction({ id });
     if (!result.success) { toast.error(result.error); return; }
     setActions((prev) => prev.filter((a) => a.id !== id));
+    if (openId === id) setOpenId(null);
   }
 
   async function handleApprove(id: string) {
     const result = await approveAgentAction({ id });
     if (!result.success) { toast.error(result.error); return; }
     setActions((prev) => prev.map((a) => a.id === id ? { ...a, status: "approved" } : a));
-    toast.success(t("agent.card.approved"));
+    toast.success("Acción aprobada y guardada en el historial.");
   }
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Threshold selector + Run button */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-            Sin actividad hace más de
-          </span>
-          <div className="flex items-center gap-1">
-            {THRESHOLD_PRESETS.map((p) => (
-              <button
-                key={p.days}
-                type="button"
-                onClick={() => setThresholdDays(p.days)}
-                disabled={isRunning}
-                className={[
-                  "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                  thresholdDays === p.days
-                    ? "border-brand/40 bg-brand text-white"
-                    : "border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary",
-                ].join(" ")}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="ml-auto">
-          <Button onClick={handleRun} disabled={isRunning} size="sm" variant="secondary">
-            {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
-            {isRunning ? t("agent.running") : t("agent.run")}
-          </Button>
-        </div>
+      {/* Run button — opens the modal */}
+      <div className="flex items-center justify-end">
+        <AgentRunModal
+          orgId={orgId}
+          locale={locale}
+          onDone={() => router.refresh()}
+        />
       </div>
 
       {/* Empty state */}
@@ -146,89 +118,138 @@ export function AgentInbox({
       )}
 
       {/* Action cards */}
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2.5">
         {actions.map((action) => {
-          const isOpen = expanded.has(action.id);
-          const contact = action.contact as { first_name?: string | null; last_name?: string | null; email?: string | null; company?: string | null } | null;
+          const isOpen = openId === action.id;
+          const approved = action.status === "approved";
+          const tone = ACTION_TONE[action.action_type] ?? ACTION_TONE.risk_alert!;
+          const contact = action.contact as {
+            first_name?: string | null;
+            last_name?: string | null;
+            email?: string | null;
+            company?: string | null;
+          } | null;
           const contactName = contact
             ? [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.email || "—"
             : "—";
-          const tone = ACTION_TONE[action.action_type] ?? ACTION_TONE.risk_alert;
-          const approved = action.status === "approved";
 
           return (
             <li
               key={action.id}
-              className={`overflow-hidden rounded-xl border transition-colors ${approved ? "border-success/30 bg-success-subtle/30 opacity-70" : "border-border-default bg-bg-surface"}`}
+              className={`overflow-hidden rounded-xl border bg-bg-surface transition-all ${approved ? "opacity-60" : tone.card}`}
             >
-              {/* Card header */}
-              <div className="flex items-start gap-3 p-4">
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${tone}`}>
+              {/* Card header — always visible */}
+              <button
+                type="button"
+                onClick={() => toggleOpen(action.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              >
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${tone.icon}`}>
                   {ACTION_ICON[action.action_type]}
-                </div>
-                <div className="flex flex-1 flex-col gap-0.5 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-text-primary truncate">{action.title}</span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="truncate text-sm font-semibold text-text-primary">{action.title}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${tone.badge}`}>
+                      {ACTION_LABEL[action.action_type]}
+                    </span>
                     {approved && (
-                      <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-                        {t("agent.card.approved")}
+                      <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+                        Aprobada
                       </span>
                     )}
                   </div>
-                  {contact && action.contact_id ? (
-                    <Link href={`/contacts/${action.contact_id}`} className="text-xs text-text-secondary hover:text-brand hover:underline truncate">
-                      {contactName}{contact.company ? ` · ${contact.company}` : ""}
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-text-muted">{contactName}</span>
-                  )}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {action.contact_id ? (
+                      <Link
+                        href={`/contacts/${action.contact_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-text-muted hover:text-brand hover:underline flex items-center gap-0.5"
+                      >
+                        {contactName}{contact?.company ? ` · ${contact.company}` : ""}
+                        <ExternalLink size={10} />
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-text-muted">{contactName}</span>
+                    )}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleExpand(action.id)}
-                  className="shrink-0 text-text-muted hover:text-text-primary"
-                >
-                  {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-              </div>
+                <span className="shrink-0 text-text-muted">
+                  {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                </span>
+              </button>
 
               {/* Expanded detail */}
               {isOpen && (
-                <div className="flex flex-col gap-3 border-t border-border-default px-4 pb-4 pt-3">
+                <div className="flex flex-col gap-4 border-t border-border-default px-4 pb-4 pt-4">
+                  {/* Reasoning */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                      {t("agent.card.reasoning")}
+                      Por qué este contacto
                     </span>
-                    <p className="text-sm text-text-secondary">{action.reasoning}</p>
+                    <p className="text-sm text-text-secondary leading-relaxed">{action.reasoning}</p>
                   </div>
 
+                  {/* Email draft — formatted */}
                   {action.draft_subject && action.draft_body && (
-                    <div className="flex flex-col gap-2 rounded-lg border border-border-default bg-bg-subtle p-3">
-                      <p className="text-xs font-medium text-text-secondary">
-                        {t("agent.card.draft")}: <span className="text-text-primary">{action.draft_subject}</span>
-                      </p>
-                      <p className="text-xs text-text-secondary whitespace-pre-wrap">{action.draft_body}</p>
+                    <div className="flex flex-col gap-0 rounded-lg border border-border-default overflow-hidden">
+                      {/* Email header */}
+                      <div className="bg-bg-subtle px-4 py-3 border-b border-border-default">
+                        <div className="flex items-center gap-2 text-xs text-text-muted">
+                          <span className="font-medium text-text-secondary w-8">De:</span>
+                          <span>Tu nombre &lt;vos@tuempresa.com&gt;</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-text-muted mt-1">
+                          <span className="font-medium text-text-secondary w-8">Para:</span>
+                          <span>{contactName}{contact?.email ? ` <${contact.email}>` : ""}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs mt-1">
+                          <span className="w-8 font-medium text-text-secondary text-xs">Asunto:</span>
+                          <span className="text-text-primary font-medium text-xs">{action.draft_subject}</span>
+                        </div>
+                      </div>
+                      {/* Email body */}
+                      <div className="bg-white px-4 py-3 dark:bg-bg-surface">
+                        <p className="whitespace-pre-wrap text-sm text-text-primary leading-relaxed">
+                          {action.draft_body}
+                        </p>
+                      </div>
+                      {/* Email actions */}
                       {contact?.email && (
-                        <a
-                          href={`mailto:${contact.email}?subject=${encodeURIComponent(action.draft_subject)}&body=${encodeURIComponent(action.draft_body)}`}
-                          className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
-                        >
-                          <Mail size={12} /> Abrir en cliente de email
-                        </a>
+                        <div className="bg-bg-subtle border-t border-border-default px-4 py-2 flex items-center gap-2">
+                          <a
+                            href={`mailto:${contact.email}?subject=${encodeURIComponent(action.draft_subject)}&body=${encodeURIComponent(action.draft_body)}`}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                          >
+                            <Mail size={12} /> Abrir en cliente de email
+                          </a>
+                        </div>
                       )}
                     </div>
                   )}
 
+                  {/* Approve / Dismiss with explanation */}
                   {!approved && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleApprove(action.id)}>
-                        <Check size={12} />
-                        {t("agent.card.approve")}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDismiss(action.id)}
-                        className="text-text-muted hover:text-error">
-                        {t("agent.card.dismiss")}
-                      </Button>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleApprove(action.id)}>
+                          <Check size={12} />
+                          Aprobar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDismiss(action.id)}
+                          className="text-text-muted hover:text-error"
+                        >
+                          <X size={12} />
+                          Descartar
+                        </Button>
+                      </div>
+                      <p className="text-[11px] text-text-muted leading-relaxed">
+                        <strong>Aprobar</strong> marca esta acción como revisada y la guarda en el historial.{" "}
+                        <strong>Descartar</strong> la elimina de tu bandeja sin registrarla.
+                      </p>
                     </div>
                   )}
                 </div>

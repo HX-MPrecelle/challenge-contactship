@@ -43,7 +43,7 @@ export default async function AgentPage() {
         </div>
       </header>
 
-      <AgentInbox initialActions={actions} locale={locale} />
+      <AgentInbox initialActions={actions} locale={locale} orgId={orgId} />
     </main>
   );
 }

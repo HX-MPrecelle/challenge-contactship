@@ -141,8 +141,6 @@ export async function runFollowUpAgent(
   let actionsGenerated = 0;
   let errors = 0;
 
-  const inserts: Database["public"]["Tables"]["agent_actions"]["Insert"][] = [];
-
   for (const contact of unique) {
     const name = [contact.first_name, contact.last_name].filter(Boolean).join(" ") || contact.email || "Sin nombre";
     const contactCtx = [
@@ -166,7 +164,9 @@ Para alertas: sé directo con la señal de riesgo y la acción recomendada.`,
         prompt: `Generá una acción para este contacto:\n\n${contactCtx}`,
       });
 
-      inserts.push({
+      // Insert each action immediately so the UI receives it via Supabase
+      // Realtime as it's generated — not batched at the end.
+      await admin.from("agent_actions").insert({
         org_id: orgId,
         contact_id: contact.id,
         run_id: runId,
@@ -183,10 +183,6 @@ Para alertas: sé directo con la señal de riesgo y la acción recomendada.`,
       console.error(`[agent] failed for contact ${contact.id}`, err);
       errors++;
     }
-  }
-
-  if (inserts.length > 0) {
-    await admin.from("agent_actions").insert(inserts);
   }
 
   return { runId, actionsGenerated, errors };
