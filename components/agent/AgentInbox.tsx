@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   Bot,
   Check,
@@ -73,7 +74,27 @@ export function AgentInbox({
   const { t } = useI18n();
   const router = useRouter();
   const [actions, setActions] = useState<AgentActionRow[]>(initialActions);
-  const [openId, setOpenId] = useState<string | null>(null); // accordion: only one open
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  // Sync when server re-renders with new data (after router.refresh())
+  useEffect(() => { setActions(initialActions); }, [initialActions]);
+
+  // Realtime: pick up new agent_actions as the agent inserts them
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`agent-inbox-${orgId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "agent_actions", filter: `org_id=eq.${orgId}` },
+        (payload) => {
+          const row = payload.new as AgentActionRow;
+          setActions((prev) => prev.some((a) => a.id === row.id) ? prev : [row, ...prev]);
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [orgId]);
 
   function toggleOpen(id: string) {
     setOpenId((prev) => (prev === id ? null : id));
