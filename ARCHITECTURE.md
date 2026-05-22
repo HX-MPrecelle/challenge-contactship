@@ -127,10 +127,10 @@ Every table has Row Level Security (RLS) enforced at the database level:
 
 ```sql
 -- Pattern used on all user-facing tables
-(auth.jwt() -> 'user_metadata' ->> 'org_id')::uuid = org_id
+(auth.jwt() -> 'app_metadata' ->> 'org_id')::uuid = org_id
 ```
 
-- `org_id` is set in JWT `user_metadata` at signup and never changes
+- `org_id` is stored in JWT `app_metadata` (service-role-only — not writable by users) at signup and never changes
 - Server Actions use `createServiceClient()` (service role) for writes; never exposed to the client
 - User-facing queries use `createClient()` which respects RLS
 - HubSpot OAuth tokens are stored as Supabase Vault secrets — never in plaintext columns
