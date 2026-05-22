@@ -33,7 +33,7 @@ export default async function ActivityPage({ searchParams }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = (user.app_metadata?.org_id ?? user.user_metadata?.org_id) as string | undefined;
   if (!orgId) redirect("/login?error=no-org");
 
   let countQuery = supabase
