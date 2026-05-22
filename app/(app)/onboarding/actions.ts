@@ -260,6 +260,7 @@ export async function importContacts(
       });
       console.log(`[importContacts] page ${pageIdx} got ${page.results.length} contacts`);
 
+      const BROADCAST_EVERY = 25;
       const upsertStart = Date.now();
       for (const contact of page.results) {
         try {
@@ -273,11 +274,16 @@ export async function importContacts(
           console.error(`[importContacts] upsert ${contact.id} failed`, err);
         }
         processed++;
+        // Broadcast every 25 contacts for smooth progress bar updates
+        if (processed % BROADCAST_EVERY === 0) {
+          broadcast(processed, total, "syncing");
+        }
       }
       console.log(
         `[importContacts] upserted page ${pageIdx} in ${Date.now() - upsertStart}ms (processed=${processed})`
       );
 
+      // Broadcast end of page in case last batch wasn't a multiple of 25
       broadcast(processed, total, "syncing");
 
       cursor = page.paging?.next?.after;
