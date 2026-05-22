@@ -17,7 +17,7 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = (user.app_metadata?.org_id ?? user.user_metadata?.org_id) as string | undefined;
   const onboardingComplete = Boolean(user.user_metadata?.onboarding_complete);
   const showSidebar = orgId !== undefined && onboardingComplete;
 

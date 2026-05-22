@@ -18,7 +18,7 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = (user.app_metadata?.org_id ?? user.user_metadata?.org_id) as string | undefined;
   if (!orgId) redirect("/login?error=no-org");
 
   const [{ data: org }, { data: connection }, { count: contactCount }] =
