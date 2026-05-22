@@ -23,33 +23,40 @@ if (!TOKEN) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
-const v2Only = args.includes("--v2");
-const v3Only = args.includes("--v3");
-const v4Only = args.includes("--v4");
+const sfOnly = args.includes("--softfactory") || args.includes("--sf");
 
 let contacts = [];
 
-if (!v2Only && !v3Only && !v4Only) {
-  const v1 = JSON.parse(readFileSync(join(__dirname, "seed-data.json"), "utf8"));
-  contacts = contacts.concat(v1);
-  console.log(`seed-data.json: ${v1.length} contactos`);
-}
+if (sfOnly) {
+  // Software factory context — use only the softfactory seed
+  const sf = JSON.parse(readFileSync(join(__dirname, "seed-data-softfactory.json"), "utf8"));
+  contacts = contacts.concat(sf);
+  console.log(`seed-data-softfactory.json: ${sf.length} contactos`);
+} else {
+  // Legacy seeds (generic B2B SaaS data)
+  const v2Only = args.includes("--v2");
+  const v3Only = args.includes("--v3");
+  const v4Only = args.includes("--v4");
 
-if (!v3Only && !v4Only) {
-  const v2 = JSON.parse(readFileSync(join(__dirname, "seed-data-v2.json"), "utf8"));
-  contacts = contacts.concat(v2);
-  console.log(`seed-data-v2.json: ${v2.length} contactos`);
+  if (!v2Only && !v3Only && !v4Only) {
+    const v1 = JSON.parse(readFileSync(join(__dirname, "seed-data.json"), "utf8"));
+    contacts = contacts.concat(v1);
+    console.log(`seed-data.json: ${v1.length} contactos`);
+  }
+  if (!v3Only && !v4Only) {
+    const v2 = JSON.parse(readFileSync(join(__dirname, "seed-data-v2.json"), "utf8"));
+    contacts = contacts.concat(v2);
+    console.log(`seed-data-v2.json: ${v2.length} contactos`);
+  }
+  if (!v4Only) {
+    const v3 = JSON.parse(readFileSync(join(__dirname, "seed-data-v3.json"), "utf8"));
+    contacts = contacts.concat(v3);
+    console.log(`seed-data-v3.json: ${v3.length} contactos`);
+  }
+  const v4 = JSON.parse(readFileSync(join(__dirname, "seed-data-v4.json"), "utf8"));
+  contacts = contacts.concat(v4);
+  console.log(`seed-data-v4.json: ${v4.length} contactos`);
 }
-
-if (!v4Only) {
-  const v3 = JSON.parse(readFileSync(join(__dirname, "seed-data-v3.json"), "utf8"));
-  contacts = contacts.concat(v3);
-  console.log(`seed-data-v3.json: ${v3.length} contactos`);
-}
-
-const v4 = JSON.parse(readFileSync(join(__dirname, "seed-data-v4.json"), "utf8"));
-contacts = contacts.concat(v4);
-console.log(`seed-data-v4.json: ${v4.length} contactos`);
 console.log(`Total a cargar: ${contacts.length} contactos`);
 
 // HubSpot's batch create endpoint accepts up to 100 contacts per call.
