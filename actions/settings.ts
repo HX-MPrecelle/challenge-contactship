@@ -12,7 +12,7 @@ export async function updateOrgIndustry(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const admin = createServiceClient();
@@ -34,7 +34,7 @@ export async function updateOrgName(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const trimmed = name.trim();
@@ -60,7 +60,7 @@ export async function disconnectHubSpot(): Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const { error } = await supabase
@@ -85,7 +85,7 @@ export async function reembedAllContacts(): Promise<
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const admin = createServiceClient();
@@ -113,7 +113,7 @@ export async function triggerResync(): Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   // Clear last_synced_at so the cron fetches all contacts again.

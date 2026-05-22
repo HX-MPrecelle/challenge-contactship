@@ -45,11 +45,11 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   // new signups, but it's cheap to verify), bootstrap it now so the
   // protected routes don't redirect into a broken state.
   let onboardingComplete = Boolean(data.user.user_metadata?.onboarding_complete);
-  if (!data.user.user_metadata?.org_id) {
+  if (!data.user.app_metadata?.org_id) {
     try {
       const bootstrap = await bootstrapOrgForUser(data.user);
       onboardingComplete = bootstrap.onboardingComplete;
-      // Force a token rotation so the new JWT carries user_metadata.org_id
+      // Force a token rotation so the new JWT carries app_metadata.org_id
       // — RLS reads from the JWT, not from the auth.users row, so the
       // session needs to be re-issued for /contacts and /settings reads
       // to return any rows.
@@ -113,8 +113,8 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   try {
     await bootstrapOrgForUser(data.user);
     // The session JWT was issued before bootstrap ran, so it has no
-    // user_metadata.org_id. RLS policies on every table key off
-    // `(auth.jwt() -> 'user_metadata' ->> 'org_id')::uuid`, so without
+    // app_metadata.org_id yet. RLS policies on every table key off
+    // `(auth.jwt() -> 'app_metadata' ->> 'org_id')::uuid`, so without
     // this refresh /contacts and /settings would return empty even
     // though the data is sitting there under the service role.
     await supabase.auth.refreshSession();

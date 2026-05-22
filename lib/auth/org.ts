@@ -35,7 +35,9 @@ export type BootstrapResult = {
  * org_id yet — they would be invisible to the user-scoped client under RLS.
  */
 export async function bootstrapOrgForUser(user: User): Promise<BootstrapResult> {
-  const existingOrgId = user.user_metadata?.org_id as string | undefined;
+  // org_id lives in app_metadata (service-role-only, safe for RLS).
+  // onboarding_complete stays in user_metadata (non-security, redirect-only).
+  const existingOrgId = (user.app_metadata?.org_id ?? user.user_metadata?.org_id) as string | undefined;
   if (existingOrgId) {
     return {
       orgId: existingOrgId,
@@ -103,10 +105,12 @@ async function persistOrgIdOnUser(
 ): Promise<void> {
   const admin = createServiceClient();
   const { error } = await admin.auth.admin.updateUserById(userId, {
-    user_metadata: {
-      org_id: orgId,
-      onboarding_complete: onboardingComplete,
-    },
+    // org_id goes into app_metadata — only writable by the service role,
+    // which makes it safe to reference in RLS policies.
+    app_metadata: { org_id: orgId },
+    // onboarding_complete stays in user_metadata — it's only used for
+    // redirect decisions after login, never in a security context.
+    user_metadata: { onboarding_complete: onboardingComplete },
   });
   if (error) {
     throw new Error(`Failed to persist org_id on user: ${error.message}`);

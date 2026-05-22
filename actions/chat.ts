@@ -48,7 +48,7 @@ export async function createConversation(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   // Use first 60 chars of user message as title

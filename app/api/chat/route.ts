@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return NextResponse.json({ error: "No org" }, { status: 400 });
 
   const { messages, persona } = (await request.json()) as {

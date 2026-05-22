@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", origin));
   }
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) {
     return NextResponse.redirect(
       new URL("/login?error=no-org", origin)

@@ -22,7 +22,7 @@ export async function skipConflict(contactId: string): Promise<
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autenticado" };
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   // Mark conflict as "snoozed" by setting sync_status back to synced temporarily.

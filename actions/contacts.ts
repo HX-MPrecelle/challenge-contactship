@@ -43,7 +43,7 @@ export async function updateContact(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: contactRow, error: lookupError } = await supabase
@@ -205,7 +205,7 @@ export async function getConflictDiff(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: contact, error: contactError } = await supabase
@@ -291,7 +291,7 @@ export async function resolveConflictMerge(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: row, error: lookupError } = await supabase
@@ -395,7 +395,7 @@ export async function resolveConflict(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: row, error: lookupError } = await supabase
@@ -477,7 +477,7 @@ export async function mergeContacts(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const admin = createServiceClient();

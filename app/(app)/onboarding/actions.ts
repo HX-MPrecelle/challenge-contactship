@@ -36,7 +36,7 @@ export async function updateOrganizationIndustry(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const admin = createServiceClient();
@@ -73,7 +73,7 @@ export async function updateOrganizationName(
     return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
   }
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) {
     return { success: false, error: "Sin organización", code: "NO_ORG" };
   }
@@ -124,7 +124,7 @@ export async function previewContactCount(
     return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
   }
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) {
     return { success: false, error: "Sin organización", code: "NO_ORG" };
   }
@@ -176,7 +176,7 @@ export async function importContacts(
     return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
   }
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) {
     return { success: false, error: "Sin organización", code: "NO_ORG" };
   }

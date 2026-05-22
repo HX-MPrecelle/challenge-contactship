@@ -23,7 +23,7 @@ export async function runAgentAction(input: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
   if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada", code: "AI_ERROR" };
 
@@ -50,7 +50,7 @@ export async function dismissAgentAction(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const admin = createServiceClient();
@@ -75,7 +75,7 @@ export async function approveAgentAction(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const admin = createServiceClient();
@@ -95,7 +95,7 @@ export async function getPendingAgentActions(): Promise<ActionResult<AgentAction
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
 
   const admin = createServiceClient();

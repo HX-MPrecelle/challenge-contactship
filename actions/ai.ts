@@ -80,7 +80,7 @@ export async function generateInsightsAction(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: contact, error: lookupError } = await supabase
@@ -182,7 +182,7 @@ export async function getTopPriorities(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const now = Date.now();
@@ -351,7 +351,7 @@ export async function findSimilarContacts(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const admin = createServiceClient();
@@ -439,7 +439,7 @@ export async function generateEmailDraftAction(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const { data: contact, error: lookupError } = await supabase
@@ -523,7 +523,7 @@ export async function naturalLanguageSearch(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const parsedSearch = await parseSearchQuery(parsed.data.query);
@@ -616,7 +616,7 @@ export async function summarizeFilteredContacts(
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   for (const f of parsed.data.filters) {
@@ -769,7 +769,7 @@ export async function generatePipelineAlerts(input: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
   if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
 
@@ -858,7 +858,7 @@ export async function analyzeWinLoss(input: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
   if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
 
@@ -938,7 +938,7 @@ export async function extractCompetitorMentions(input: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado" };
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización" };
   if (!process.env.OPENAI_API_KEY) return { success: false, error: "OPENAI_API_KEY no configurada" };
 
@@ -1014,7 +1014,7 @@ export async function detectDuplicates(): Promise<
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
 
-  const orgId = user.user_metadata?.org_id as string | undefined;
+  const orgId = user.app_metadata?.org_id as string | undefined;
   if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
 
   const admin = createServiceClient();
