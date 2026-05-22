@@ -48,29 +48,30 @@ type ContactCandidate = {
 };
 
 /**
- * Daily autonomous agent. Scans at-risk contacts, generates personalized
- * action recommendations (including email drafts), and persists them to
- * agent_actions so the user can review from the Agent Inbox.
+ * Autonomous agent. Scans at-risk contacts based on a configurable
+ * inactivity threshold and generates personalized action recommendations.
  *
- * At-risk criteria:
- * - customer + no activity > 60 days → churn risk
- * - SQL + no activity > 14 days      → stalling
- * - opportunity + no activity > 30 days → deal going cold
- * - NEW lead + no activity > 7 days   → unworked lead
+ * thresholdDays controls what "inactive" means:
+ *   - 0  → no date filter, analyze the most relevant contacts regardless of date (demo/force mode)
+ *   - >0 → contacts not updated in the last N days
  *
- * Capped at MAX_CONTACTS_PER_RUN to control API cost.
+ * The threshold applies uniformly across all lifecycle stages so the user
+ * has a single intuitive knob ("inactive for more than X days").
  */
 export async function runFollowUpAgent(
   admin: AdminClient,
   orgId: string,
-  locale = "es"
+  locale = "es",
+  thresholdDays = 30
 ): Promise<AgentRunResult> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY not configured");
   }
 
   const now = new Date();
-  const ago = (days: number) => new Date(now.getTime() - days * 86400000).toISOString();
+  const cutoff = thresholdDays > 0
+    ? new Date(now.getTime() - thresholdDays * 86400000).toISOString()
+    : null;
   const MAX_CONTACTS_PER_RUN = 10;
 
   // Dismiss previously pending actions before creating new ones
@@ -80,32 +81,44 @@ export async function runFollowUpAgent(
     .eq("org_id", orgId)
     .eq("status", "pending");
 
-  // Collect at-risk contacts across all criteria
+  // Build queries — cutoff filter is optional (null = no date restriction)
+  function addCutoff(q: ReturnType<AdminClient["from"]>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return cutoff ? (q as any).lt("local_updated_at", cutoff) : q;
+  }
+
+  const BASE = "id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, local_updated_at";
+  const base = (stage?: string, status?: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let q: any = admin.from("contacts").select(BASE)
+      .eq("org_id", orgId).eq("is_archived", false);
+    if (stage)  q = q.eq("lifecycle_stage", stage);
+    if (status) q = q.eq("lead_status", status);
+    return q;
+  };
+
   const [
     { data: atRiskCustomers },
     { data: stallingSQL },
     { data: coldOpps },
     { data: unworkedLeads },
   ] = await Promise.all([
-    admin.from("contacts").select("id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, local_updated_at")
-      .eq("org_id", orgId).eq("is_archived", false)
-      .eq("lifecycle_stage", "customer").lt("local_updated_at", ago(60)).limit(4),
-    admin.from("contacts").select("id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, local_updated_at")
-      .eq("org_id", orgId).eq("is_archived", false)
-      .eq("lifecycle_stage", "salesqualifiedlead").lt("local_updated_at", ago(14)).limit(3),
-    admin.from("contacts").select("id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, local_updated_at")
-      .eq("org_id", orgId).eq("is_archived", false)
-      .eq("lifecycle_stage", "opportunity").lt("local_updated_at", ago(30)).limit(3),
-    admin.from("contacts").select("id, first_name, last_name, email, company, job_title, lifecycle_stage, lead_status, local_updated_at")
-      .eq("org_id", orgId).eq("is_archived", false)
-      .eq("lead_status", "NEW").lt("local_updated_at", ago(7)).limit(3),
+    addCutoff(base("customer")).limit(4),
+    addCutoff(base("salesqualifiedlead")).limit(3),
+    addCutoff(base("opportunity")).limit(3),
+    addCutoff(base(undefined, "NEW")).limit(3),
   ]);
 
+  const sinceLabel = cutoff
+    ? `en más de ${thresholdDays} día${thresholdDays === 1 ? "" : "s"}`
+    : "seleccionado para análisis";
+
+  type RawRow = Omit<ContactCandidate, "riskReason">;
   const candidates: ContactCandidate[] = [
-    ...(atRiskCustomers ?? []).map((c) => ({ ...c, riskReason: "Cliente sin contacto en más de 60 días — riesgo de churn" })),
-    ...(stallingSQL ?? []).map((c) => ({ ...c, riskReason: "SQL sin actividad en más de 14 días — conversación se enfrió" })),
-    ...(coldOpps ?? []).map((c) => ({ ...c, riskReason: "Oportunidad sin actividad en más de 30 días — deal en riesgo" })),
-    ...(unworkedLeads ?? []).map((c) => ({ ...c, riskReason: "Lead nuevo sin trabajar en más de 7 días" })),
+    ...(atRiskCustomers ?? []).map((c: RawRow) => ({ ...c, riskReason: `Cliente sin actividad ${sinceLabel} — riesgo de churn` })),
+    ...(stallingSQL    ?? []).map((c: RawRow) => ({ ...c, riskReason: `SQL sin actividad ${sinceLabel} — conversación se enfrió` })),
+    ...(coldOpps       ?? []).map((c: RawRow) => ({ ...c, riskReason: `Oportunidad sin actividad ${sinceLabel} — deal en riesgo` })),
+    ...(unworkedLeads  ?? []).map((c: RawRow) => ({ ...c, riskReason: `Lead nuevo sin trabajar ${sinceLabel}` })),
   ];
 
   // Deduplicate by id and cap at MAX_CONTACTS_PER_RUN

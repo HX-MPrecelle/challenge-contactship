@@ -37,6 +37,15 @@ const ACTION_TONE: Record<string, string> = {
   opportunity:     "border-success/30 bg-success-subtle text-success",
 };
 
+const THRESHOLD_PRESETS = [
+  { label: "1 día",   days: 1 },
+  { label: "7 días",  days: 7 },
+  { label: "14 días", days: 14 },
+  { label: "30 días", days: 30 },
+  { label: "60 días", days: 60 },
+  { label: "Todos",   days: 0 },
+] as const;
+
 export function AgentInbox({
   initialActions,
   locale,
@@ -49,6 +58,7 @@ export function AgentInbox({
   const [actions, setActions] = useState<AgentActionRow[]>(initialActions);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [isRunning, startRun] = useTransition();
+  const [thresholdDays, setThresholdDays] = useState(30);
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -61,7 +71,7 @@ export function AgentInbox({
 
   function handleRun() {
     startRun(async () => {
-      const result = await runAgentAction({ locale });
+      const result = await runAgentAction({ locale: locale as "es" | "en", thresholdDays });
       if (!result.success) {
         toast.error(t("agent.error"));
         return;
@@ -89,12 +99,37 @@ export function AgentInbox({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Run button */}
-      <div className="flex items-center justify-end">
-        <Button onClick={handleRun} disabled={isRunning} size="sm" variant="secondary">
-          {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
-          {isRunning ? t("agent.running") : t("agent.run")}
-        </Button>
+      {/* Threshold selector + Run button */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            Sin actividad hace más de
+          </span>
+          <div className="flex items-center gap-1">
+            {THRESHOLD_PRESETS.map((p) => (
+              <button
+                key={p.days}
+                type="button"
+                onClick={() => setThresholdDays(p.days)}
+                disabled={isRunning}
+                className={[
+                  "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                  thresholdDays === p.days
+                    ? "border-brand/40 bg-brand text-white"
+                    : "border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary",
+                ].join(" ")}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="ml-auto">
+          <Button onClick={handleRun} disabled={isRunning} size="sm" variant="secondary">
+            {isRunning ? <Loader2 size={14} className="animate-spin" /> : <Bot size={14} />}
+            {isRunning ? t("agent.running") : t("agent.run")}
+          </Button>
+        </div>
       </div>
 
       {/* Empty state */}
