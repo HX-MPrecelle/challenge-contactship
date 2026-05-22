@@ -16,9 +16,17 @@ type AgentActionRow = Database["public"]["Tables"]["agent_actions"]["Row"] & {
 
 export type { AgentActionRow };
 
-export async function runAgentAction(input: {
-  locale?: string;
-}): Promise<ActionResult<{ actionsGenerated: number }>> {
+const RunAgentSchema = z.object({
+  locale: z.enum(["es", "en"]).optional(),
+  thresholdDays: z.number().int().min(0).max(365).default(30),
+});
+
+export async function runAgentAction(
+  input: z.infer<typeof RunAgentSchema>
+): Promise<ActionResult<{ actionsGenerated: number }>> {
+  const parsed = RunAgentSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Datos inválidos", code: "VALIDATION_ERROR" };
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
@@ -29,7 +37,12 @@ export async function runAgentAction(input: {
 
   try {
     const admin = createServiceClient();
-    const result = await runFollowUpAgent(admin, orgId, input.locale ?? "es");
+    const result = await runFollowUpAgent(
+      admin,
+      orgId,
+      parsed.data.locale ?? "es",
+      parsed.data.thresholdDays
+    );
     revalidatePath("/agent");
     return { success: true, data: { actionsGenerated: result.actionsGenerated } };
   } catch (err) {
