@@ -2,6 +2,10 @@
   "name": "contactship",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
   "scripts": {
     "dev": "cross-env NODE_ENV=development next dev",
     "build": "cross-env NODE_ENV=production next build",
