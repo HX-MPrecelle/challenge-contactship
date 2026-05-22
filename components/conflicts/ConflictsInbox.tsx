@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConflictListItem } from "./ConflictListItem";
@@ -88,12 +89,12 @@ export function ConflictsInbox({
         </div>
 
         <div className="flex gap-2">
-          <a
+          <Link
             href="/contacts"
             className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
           >
             {t("conflicts.empty.viewContacts")}
-          </a>
+          </Link>
           <a
             href="/activity"
             className="rounded-lg border border-border-default px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"

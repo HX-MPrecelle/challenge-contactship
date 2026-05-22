@@ -74,14 +74,6 @@ export function ContactList({
   const searchParams = useSearchParams();
   const rowPy = density === "compact" ? "py-1.5" : "py-3";
 
-  // Build translated filter arrays inside the component so they react to locale changes
-  const STATUS_LABEL: Record<SyncStatus, string> = {
-    synced: t("contacts.filter.status.synced"),
-    pending: t("contacts.filter.status.pending"),
-    conflict: t("contacts.filter.status.conflict"),
-    error: t("contacts.filter.status.error"),
-  };
-
   const STATUS_FILTERS: { value: SyncStatus; label: string; dot: string }[] = [
     { value: "synced",   label: t("contacts.filter.status.synced"),   dot: "bg-success" },
     { value: "pending",  label: t("contacts.filter.status.pending"),  dot: "bg-warning" },
@@ -183,7 +175,7 @@ export function ContactList({
       });
     }
     return result;
-  }, [contacts, query, aiFilter, statusFilter]);
+  }, [contacts, query, aiFilter, statusFilter, lifecycleFilter]);
 
   // Reset to page 0 whenever any filter changes (also clears ?page= from URL)
   useEffect(() => { navigatePage(0); }, [statusFilter, lifecycleFilter, aiFilter, query]); // eslint-disable-line react-hooks/exhaustive-deps

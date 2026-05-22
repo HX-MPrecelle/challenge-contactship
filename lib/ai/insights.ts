@@ -84,7 +84,6 @@ Criterios del lead_score:
 Sé específico, accionable y conciso. Hablá siempre en español rioplatense.`;
 }
 
-const SYSTEM_PROMPT = getSystemPrompt();
 
 /**
  * Build (or reuse) AI insights for a contact. Reads the four-row cache from
