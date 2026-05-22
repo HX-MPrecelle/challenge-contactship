@@ -57,6 +57,20 @@ export function AgentRunModal({ orgId, locale, onDone }: Props) {
     setOpen(true);
   }
 
+  // Auto-close 1.2s after done — no extra button needed
+  useEffect(() => {
+    if (phase !== "done") return;
+    const t = setTimeout(() => {
+      if (channelRef.current) {
+        createClient().removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      setOpen(false);
+      onDone();
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleClose() {
     if (channelRef.current) {
       createClient().removeChannel(channelRef.current);
@@ -222,9 +236,10 @@ export function AgentRunModal({ orgId, locale, onDone }: Props) {
                 <p className="text-xs text-text-muted">Esto puede tomar hasta 60 segundos…</p>
               )}
               {phase === "done" && (
-                <Button size="sm" onClick={handleClose}>
-                  Ver en bandeja
-                </Button>
+                <div className="flex items-center gap-2 text-xs text-success">
+                  <CheckCircle2 size={14} />
+                  Listo — redirigiendo a la bandeja…
+                </div>
               )}
             </div>
           </DialogPrimitive.Content>
