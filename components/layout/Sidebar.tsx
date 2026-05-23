@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Activity,
   AlertTriangle,
   BarChart3,
   Bot,
   Check,
-  ChevronDown,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -26,8 +25,6 @@ type Props = {
 export function Sidebar({ userEmail, locale }: Props) {
   const t = createT(locale);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const activeSection = searchParams.get("section") ?? "general";
   const onSettings = pathname.startsWith("/settings");
 
   const NAV = [
@@ -40,13 +37,6 @@ export function Sidebar({ userEmail, locale }: Props) {
     { href: "/sync",      label: t("nav.sync"),        Icon: Activity },
   ] as const;
 
-  const SETTINGS_SECTIONS = [
-    { id: "general",      label: t("nav.settings.general") },
-    { id: "hubspot",      label: t("nav.settings.hubspot") },
-    { id: "sync",         label: t("nav.settings.sync") },
-    { id: "ai",           label: t("nav.settings.ai") },
-    { id: "preferences",  label: t("nav.settings.preferences") },
-  ] as const;
 
   return (
     <aside className="flex w-[220px] shrink-0 flex-col border-r border-border-default bg-bg-surface p-3">
@@ -79,47 +69,18 @@ export function Sidebar({ userEmail, locale }: Props) {
           );
         })}
 
-        {/* Settings with inline sub-menu */}
-        <div className="flex flex-col gap-0.5">
-          <Link
-            href="/settings"
-            className={[
-              "flex h-[34px] items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
-              onSettings
-                ? "bg-bg-subtle text-text-primary"
-                : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
-            ].join(" ")}
-          >
-            <Settings2 size={16} />
-            <span className="flex-1">{t("nav.settings")}</span>
-            <ChevronDown
-              size={13}
-              className={`text-text-muted transition-transform ${onSettings ? "rotate-180" : ""}`}
-            />
-          </Link>
-
-          {onSettings && (
-            <div className="ml-6 flex flex-col gap-0.5 py-0.5">
-              {SETTINGS_SECTIONS.map((s) => {
-                const isActive = activeSection === s.id;
-                return (
-                  <Link
-                    key={s.id}
-                    href={`/settings?section=${s.id}`}
-                    className={[
-                      "flex h-7 items-center rounded-md px-2.5 text-xs font-medium transition-colors",
-                      isActive
-                        ? "bg-brand-subtle text-brand-on-subtle"
-                        : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
-                    ].join(" ")}
-                  >
-                    {s.label}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <Link
+          href="/settings"
+          className={[
+            "flex h-[34px] items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
+            onSettings
+              ? "bg-bg-subtle text-text-primary"
+              : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
+          ].join(" ")}
+        >
+          <Settings2 size={16} />
+          <span>{t("nav.settings")}</span>
+        </Link>
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border-default pt-3">
