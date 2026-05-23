@@ -18,7 +18,9 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { MarkdownText } from "@/components/ui/MarkdownText";
 import { useVoiceInput } from "@/lib/hooks/useVoiceInput";
+import { correctVoiceInput } from "@/actions/ai";
 import {
   PERSONAS,
   PERSONA_HINT,
@@ -152,8 +154,21 @@ export function ContactsChat() {
     });
   }
 
-  const voice = useVoiceInput((transcript) => {
-    setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+  const voice = useVoiceInput(async (raw) => {
+    // Show raw transcript immediately for instant feedback
+    setInput((prev) => (prev ? `${prev} ${raw}` : raw));
+    // Then correct with AI in background — improves accuracy for CRM terms
+    try {
+      const { corrected } = await correctVoiceInput(raw);
+      if (corrected !== raw) {
+        setInput((prev) => {
+          const withoutRaw = prev.endsWith(raw)
+            ? prev.slice(0, prev.length - raw.length).trimEnd()
+            : prev;
+          return withoutRaw ? `${withoutRaw} ${corrected}` : corrected;
+        });
+      }
+    } catch { /* keep raw on error */ }
   });
 
   useEffect(() => {
@@ -443,7 +458,7 @@ function Message({
         <Sparkles size={13} className="text-brand-on-subtle" />
       </div>
       <div className="flex flex-1 flex-col gap-2">
-        <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap">{text}</p>
+        <MarkdownText text={text} className="text-text-primary" />
         {citations.length > 0 && <Citations contacts={citations} />}
       </div>
     </div>

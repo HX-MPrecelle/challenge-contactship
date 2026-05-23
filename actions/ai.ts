@@ -923,10 +923,11 @@ const CompetitiveSchema = z.object({
     wonAgainst: z.number().int().min(0),
     lostAgainst: z.number().int().min(0),
     activeDeals: z.number().int().min(0),
-    differentiators: z.array(z.string().max(120)).max(3),
+    differentiators: z.array(z.string().max(120)).max(3).describe("Our advantages when competing against them"),
+    weaknesses: z.array(z.string().max(120)).max(3).describe("Where they beat us or why we lost deals against them"),
     quote: z.string().max(220).nullable(),
   })).max(10),
-  summary: z.string().max(300),
+  summary: z.string().max(500),
   noCompetitorsFound: z.boolean().nullable(),
 });
 
@@ -972,8 +973,8 @@ export async function extractCompetitorMentions(input: {
     const { object } = await generateObject({
       model: openai(AI_MODEL_ID),
       schema: CompetitiveSchema,
-      system: `You are a competitive intelligence analyst. Extract competitor mentions from CRM notes and analyze win/loss context.${industryCtx(industry)} ${langInstr} Be precise: only include competitors explicitly mentioned by name. WON = we won, LOST = we lost, ACTIVE = deal in progress.`,
-      prompt: `CRM notes from ${withNotes.length} contacts:\n\n${notesText}\n\nExtract all competitor mentions with win/loss context and key differentiators our team uses against them.`,
+      system: `You are a competitive intelligence analyst. Extract competitor mentions from CRM notes and analyze win/loss context.${industryCtx(industry)} ${langInstr} Be precise: only include competitors explicitly mentioned by name. WON = we won, LOST = we lost, ACTIVE = deal in progress. For each competitor extract BOTH differentiators (our strengths vs them) AND weaknesses (where they beat us or reasons we lost).`,
+      prompt: `CRM notes from ${withNotes.length} contacts:\n\n${notesText}\n\nExtract all competitor mentions with win/loss context, our differentiators against them, AND the weaknesses or reasons we lost to them.`,
     });
     return { success: true, data: object, notesCount: withNotes.length };
   } catch (err) {
@@ -1079,4 +1080,37 @@ export async function detectDuplicates(): Promise<
   }
 
   return { success: true, data: { groups } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VOICE INPUT CORRECTION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Takes a raw Web Speech API transcript and corrects it using GPT with
+ * CRM context. Improves accuracy for domain-specific terms (lifecycle stages,
+ * lead statuses, industry names) that speech recognition often misheard.
+ * Returns the corrected query or the original if AI is unavailable.
+ */
+export async function correctVoiceInput(
+  raw: string
+): Promise<{ corrected: string }> {
+  if (!process.env.OPENAI_API_KEY || !raw.trim()) {
+    return { corrected: raw };
+  }
+  try {
+    const { text } = await generateText({
+      model: openai(AI_MODEL_ID),
+      system: `You are a voice transcription corrector for a B2B CRM assistant.
+The user spoke a query about their contacts, sales pipeline, leads, or deals.
+Correct any speech recognition errors (especially CRM terms, company names, job titles).
+Return ONLY the corrected query text — no explanations, no quotes.
+Keep the same language as the input (Spanish or English).`,
+      prompt: `Voice transcription: "${raw}"\n\nCorrected query:`,
+      maxOutputTokens: 80,
+    });
+    return { corrected: text.trim() || raw };
+  } catch {
+    return { corrected: raw };
+  }
 }

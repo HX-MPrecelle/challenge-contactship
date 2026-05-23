@@ -115,17 +115,34 @@ export function CompetitiveIntelligenceSection() {
                     </div>
                   )}
 
-                  {/* Differentiators */}
+                  {/* Differentiators (our strengths) */}
                   {c.differentiators.length > 0 && (
                     <div>
-                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                        {t("competitive.differentiators")}
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-success/80">
+                        Puntos fuertes vs ellos
                       </p>
                       <ul className="flex flex-col gap-1">
                         {c.differentiators.map((d, j) => (
                           <li key={j} className="flex items-start gap-1 text-[11px] text-text-secondary">
-                            <span className="mt-0.5 shrink-0 text-success">→</span>
+                            <span className="mt-0.5 shrink-0 text-success">↑</span>
                             {d}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Weaknesses (where they beat us) */}
+                  {c.weaknesses.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-error/80">
+                        Puntos débiles vs ellos
+                      </p>
+                      <ul className="flex flex-col gap-1">
+                        {c.weaknesses.map((w, j) => (
+                          <li key={j} className="flex items-start gap-1 text-[11px] text-text-secondary">
+                            <span className="mt-0.5 shrink-0 text-error">↓</span>
+                            {w}
                           </li>
                         ))}
                       </ul>
