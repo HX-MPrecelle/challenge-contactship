@@ -14,7 +14,7 @@ import { DensitySelector } from "@/components/settings/DensitySelector";
 import { useI18n } from "@/lib/i18n/context";
 import type { TableDensity } from "@/lib/preferences";
 
-type Tab = "general" | "hubspot" | "sync" | "ai" | "preferences";
+type Tab = "general" | "hubspot" | "ai" | "preferences";
 
 type Connection = {
   portal_id: string;
@@ -55,7 +55,6 @@ export function SettingsTabs({
   const tabs: { id: Tab; label: string }[] = [
     { id: "general",     label: t("nav.settings.general") },
     { id: "hubspot",     label: t("nav.settings.hubspot") },
-    { id: "sync",        label: t("nav.settings.sync") },
     { id: "ai",          label: t("nav.settings.ai") },
     { id: "preferences", label: t("nav.settings.preferences") },
   ];
@@ -214,12 +213,8 @@ export function SettingsTabs({
               </Button>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ── Sync ── */}
-      {active === "sync" && (
-        <div className="flex flex-col gap-8">
+          {/* Sync settings — moved here since they're HubSpot-specific */}
           <SettingsSection
             title={t("nav.settings.sync")}
             description={t("settings.sync.bidirDesc")}
