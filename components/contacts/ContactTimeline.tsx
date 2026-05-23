@@ -71,7 +71,7 @@ export function ContactTimeline({ events }: { events: SyncEvent[] }) {
                     : t("timeline.direction.to")}
                 </span>
               </div>
-              <span className="font-mono text-xs text-text-muted">
+              <span className="font-mono text-xs text-text-muted" suppressHydrationWarning>
                 {new Date(event.created_at).toLocaleString("es-AR", {
                   dateStyle: "medium",
                   timeStyle: "short",

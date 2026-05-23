@@ -544,7 +544,6 @@ function SelectionOption({
 }
 
 function SyncStep({ orgId, selection }: { orgId: string; selection: Selection }) {
-  console.log("[SyncStep] component mounting (BUILD-V4)", { orgId, selection });
   const router = useRouter();
   const [progress, setProgress] = useState({ processed: 0, total: 0 });
   const [phase, setPhase] = useState<"connecting" | "syncing" | "done" | "error">(
@@ -576,9 +575,7 @@ function SyncStep({ orgId, selection }: { orgId: string; selection: Selection })
           ? { lifecycleStage: selection.lifecycleStage }
           : {};
 
-      console.log("[SyncStep] calling importContacts", filter);
       const result = await importContacts(filter);
-      console.log("[SyncStep] importContacts returned", result);
       if (cancelled) return;
 
       if (!result.success) {
@@ -621,9 +618,6 @@ function SyncStep({ orgId, selection }: { orgId: string; selection: Selection })
     // resolves). Better degraded UX than a frozen screen.
     const fallbackTimer = setTimeout(() => {
       if (!importStartedRef.current && !cancelled) {
-        console.warn(
-          "[SyncStep] Realtime subscribe timed out, starting import without live progress"
-        );
         void runImport();
       }
     }, 3000);
@@ -640,7 +634,6 @@ function SyncStep({ orgId, selection }: { orgId: string; selection: Selection })
         if (p.status === "syncing") setPhase("syncing");
       })
       .subscribe((status) => {
-        console.log("[SyncStep] realtime status:", status);
         if (status === "SUBSCRIBED" && !cancelled) {
           clearTimeout(fallbackTimer);
           void runImport();

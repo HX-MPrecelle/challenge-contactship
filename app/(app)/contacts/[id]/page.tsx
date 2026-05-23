@@ -166,7 +166,7 @@ export default async function ContactDetailPage({ params }: Props) {
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
             <header className="flex items-baseline justify-between pb-4">
               <h2 className="text-base font-semibold text-text-primary">{t("contact.section.activity")}</h2>
-              <span className="font-mono text-[10px] text-text-muted">
+              <span className="font-mono text-[10px] text-text-muted" suppressHydrationWarning>
                 {new Date(contact.local_updated_at).toLocaleString("es-AR", {
                   dateStyle: "short",
                   timeStyle: "short",
