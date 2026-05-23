@@ -205,8 +205,8 @@ export function EmailDraftDialog({ contactId }: { contactId: string }) {
             <div className="flex flex-col gap-3">
               {/* Compact summary of tone+goal when draft is shown */}
               <div className="flex items-center justify-between rounded-md bg-bg-subtle px-3 py-2 text-xs text-text-secondary">
-                <span>
-                  {t("email.summary", { tone: TONES.find((to) => to.value === tone)?.label ?? tone, goal: goal.slice(0, 50) + (goal.length > 50 ? "…" : "") })}
+                <span className="flex-1 min-w-0">
+                  {t("email.summary", { tone: TONES.find((to) => to.value === tone)?.label ?? tone, goal })}
                 </span>
                 <button
                   type="button"
