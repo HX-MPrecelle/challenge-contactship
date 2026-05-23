@@ -48,6 +48,7 @@ export function ContactsChat() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [input, setInput] = useState("");
+  const [isCorrectingVoice, setIsCorrectingVoice] = useState(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(PERSONA_STORAGE_KEY);
@@ -155,20 +156,17 @@ export function ContactsChat() {
   }
 
   const voice = useVoiceInput(async (raw) => {
-    // Show raw transcript immediately for instant feedback
-    setInput((prev) => (prev ? `${prev} ${raw}` : raw));
-    // Then correct with AI in background — improves accuracy for CRM terms
+    // Hold the raw text — show "Interpretando..." until AI corrects
+    setIsCorrectingVoice(true);
     try {
       const { corrected } = await correctVoiceInput(raw);
-      if (corrected !== raw) {
-        setInput((prev) => {
-          const withoutRaw = prev.endsWith(raw)
-            ? prev.slice(0, prev.length - raw.length).trimEnd()
-            : prev;
-          return withoutRaw ? `${withoutRaw} ${corrected}` : corrected;
-        });
-      }
-    } catch { /* keep raw on error */ }
+      setInput((prev) => prev ? `${prev} ${corrected}` : corrected);
+    } catch {
+      // Fallback: show raw if AI correction fails
+      setInput((prev) => prev ? `${prev} ${raw}` : raw);
+    } finally {
+      setIsCorrectingVoice(false);
+    }
   });
 
   useEffect(() => {
@@ -313,14 +311,16 @@ export function ContactsChat() {
 
         {/* Composer */}
         <div className="border-t border-border-default px-6 pb-6 pt-4">
-          {voice.listening && (
+          {(voice.listening || isCorrectingVoice) && (
             <div className="mb-2 flex items-center gap-2 rounded-lg border border-brand/40 bg-brand-subtle px-3 py-2 text-xs">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
               </span>
-              <span className="text-brand-on-subtle">{t("chat.voice.listening")}</span>
-              {voice.interim && (
+              <span className="text-brand-on-subtle">
+                {isCorrectingVoice ? "Interpretando con IA…" : t("chat.voice.listening")}
+              </span>
+              {voice.listening && voice.interim && (
                 <span className="truncate italic text-text-secondary">
                   &ldquo;{voice.interim}&rdquo;
                 </span>
