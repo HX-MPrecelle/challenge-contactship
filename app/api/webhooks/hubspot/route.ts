@@ -23,6 +23,14 @@ export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const fullUri = reconstructFullUri(request);
 
+  // Diagnostic: log every incoming attempt so we can confirm HubSpot is reaching us
+  console.log("[hubspot webhook] POST received", {
+    uri: fullUri,
+    sig: request.headers.get("x-hubspot-signature-v3")?.slice(0, 8) + "…",
+    ts: request.headers.get("x-hubspot-request-timestamp"),
+    bodyLen: rawBody.length,
+  });
+
   try {
     verifyWebhookSignature({
       method: "POST",
