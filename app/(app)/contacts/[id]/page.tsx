@@ -60,7 +60,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <ContactRealtimeRefresher contactId={contact.id} />
+      <ContactRealtimeRefresher contactId={contact.id} orgId={orgId} />
       {/* Back navigation */}
       <Link
         href="/contacts"
