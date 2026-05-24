@@ -23,25 +23,29 @@ export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const fullUri = reconstructFullUri(request);
 
-  // Diagnostic: log every incoming attempt so we can confirm HubSpot is reaching us
-  console.log("[hubspot webhook] POST received", {
-    uri: fullUri,
-    sig: request.headers.get("x-hubspot-signature-v3")?.slice(0, 8) + "…",
-    ts: request.headers.get("x-hubspot-request-timestamp"),
-    bodyLen: rawBody.length,
-  });
+  // Try verification with both the OAuth client secret AND the private app
+  // token — HubSpot signs with whichever app the subscription belongs to.
+  // OAuth App (40351812) → signs with HUBSPOT_CLIENT_SECRET
+  // Private App (40354107) → signs with HUBSPOT_PRIVATE_APP_TOKEN
+  const sig = request.headers.get("x-hubspot-signature-v3");
+  const ts  = request.headers.get("x-hubspot-request-timestamp");
+  const secrets = [
+    process.env.HUBSPOT_CLIENT_SECRET,
+    process.env.HUBSPOT_PRIVATE_APP_TOKEN,
+  ].filter(Boolean) as string[];
 
-  try {
-    verifyWebhookSignature({
-      method: "POST",
-      fullUri,
-      rawBody,
-      signature: request.headers.get("x-hubspot-signature-v3"),
-      timestamp: request.headers.get("x-hubspot-request-timestamp"),
-      clientSecret: process.env.HUBSPOT_CLIENT_SECRET!,
-    });
-  } catch (err) {
-    console.warn("[hubspot webhook] verification failed", err);
+  let verified = false;
+  for (const secret of secrets) {
+    try {
+      verifyWebhookSignature({ method: "POST", fullUri, rawBody, signature: sig, timestamp: ts, clientSecret: secret });
+      verified = true;
+      break;
+    } catch {
+      // try next secret
+    }
+  }
+  if (!verified) {
+    console.warn("[hubspot webhook] verification failed with all available secrets");
     return new NextResponse("Forbidden", { status: 403 });
   }
 
