@@ -23,6 +23,7 @@ const UpdateContactSchema = z.object({
   phone: z.string().max(60).optional().nullable(),
   company: z.string().max(200).optional().nullable(),
   jobTitle: z.string().max(200).optional().nullable(),
+  message: z.string().max(5000).optional().nullable(),
 });
 
 type ActionResult<T = void> =
@@ -64,6 +65,7 @@ export async function updateContact(
   if (parsed.data.phone !== undefined) hubspotProps.phone = parsed.data.phone ?? "";
   if (parsed.data.company !== undefined) hubspotProps.company = parsed.data.company ?? "";
   if (parsed.data.jobTitle !== undefined) hubspotProps.jobtitle = parsed.data.jobTitle ?? "";
+  if (parsed.data.message !== undefined) hubspotProps.message = parsed.data.message ?? "";
 
   try {
     const client = await getHubSpotClient(orgId);
@@ -551,4 +553,132 @@ export async function mergeContacts(
   revalidatePath("/contacts");
   revalidatePath(`/contacts/${parsed.data.primaryId}`);
   return { success: true, data: { id: parsed.data.primaryId } };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRE-FLIGHT CONFLICT CHECK
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type PreflightField = {
+  field: string;
+  label: string;
+  base: string | null;
+  local: string | null;    // what the user is about to submit
+  hubspot: string | null;  // what HubSpot has RIGHT NOW
+  localChanged: boolean;
+  hubspotChanged: boolean;
+  isConflict: boolean;
+};
+
+export type PreflightResult = {
+  hasChanges: boolean;           // any HubSpot-side changes detected
+  trueConflicts: PreflightField[];   // same field changed on both sides
+  hubspotOnly: PreflightField[];     // HubSpot changed, user didn't touch
+  userOnly: PreflightField[];        // user changed, HubSpot didn't touch
+};
+
+const PREFLIGHT_FIELD_MAP: Record<string, string> = {
+  first_name: "Nombre",   last_name: "Apellido",
+  email:      "Email",    phone:     "Teléfono",
+  company:    "Empresa",  job_title: "Cargo",
+  message:    "Notas del CRM",
+};
+const PREFLIGHT_KEYS = Object.keys(PREFLIGHT_FIELD_MAP) as (keyof typeof PREFLIGHT_FIELD_MAP)[];
+
+const CheckConflictSchema = z.object({
+  contactId: z.string().uuid(),
+  userValues: z.record(z.string(), z.union([z.string(), z.null()])),
+});
+
+/**
+ * Fetch current HubSpot state before saving and compute a full 3-way diff
+ * (base_state → local edit, base_state → HubSpot current) so the UI can
+ * show the user exactly what changed on each side before committing.
+ */
+export async function checkConflictBeforeSave(
+  input: z.infer<typeof CheckConflictSchema>
+): Promise<ActionResult<PreflightResult>> {
+  const parsed = CheckConflictSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Datos inválidos", code: "VALIDATION_ERROR" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "No autorizado", code: "UNAUTHORIZED" };
+
+  const orgId = user.app_metadata?.org_id as string | undefined;
+  if (!orgId) return { success: false, error: "Sin organización", code: "NO_ORG" };
+
+  // Fetch our stored base_state
+  const admin = createServiceClient();
+  const { data: contact } = await admin
+    .from("contacts")
+    .select("hubspot_id, base_state, first_name, last_name, email, phone, company, job_title, properties")
+    .eq("id", parsed.data.contactId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (!contact) return { success: false, error: "Contacto no encontrado", code: "NOT_FOUND" };
+
+  // Fetch live HubSpot state
+  let hubspotContact;
+  try {
+    const client = await getHubSpotClient(orgId);
+    hubspotContact = await getContact(client, contact.hubspot_id);
+  } catch {
+    // If HubSpot is unreachable, skip pre-flight and let the save proceed
+    return { success: true, data: { hasChanges: false, trueConflicts: [], hubspotOnly: [], userOnly: [] } };
+  }
+  if (!hubspotContact) return { success: true, data: { hasChanges: false, trueConflicts: [], hubspotOnly: [], userOnly: [] } };
+
+  const hsProps = hubspotContact.properties ?? {};
+  const rawBase = contact.base_state as Record<string, string | null> | null;
+  const localProps = contact.properties as Record<string, string | null> | null ?? {};
+
+  const trueConflicts: PreflightField[] = [];
+  const hubspotOnly: PreflightField[] = [];
+  const userOnly: PreflightField[] = [];
+
+  for (const f of PREFLIGHT_KEYS) {
+    // Map to HubSpot property name
+    const hsKey = f === "first_name" ? "firstname"
+      : f === "last_name" ? "lastname"
+      : f === "job_title" ? "jobtitle"
+      : f;
+
+    const base: string | null = rawBase ? (rawBase[f] ?? null) : (
+      f === "message" ? (localProps.message ?? null) : ((contact as Record<string, string | null>)[f] ?? null)
+    );
+    const userVal: string | null = (parsed.data.userValues[f] as string | null | undefined) ?? null;
+    const hsVal = (hsProps[hsKey] ?? null) as string | null;
+
+    const localChanged = (base ?? "") !== (userVal ?? "");
+    const hubspotChanged = (base ?? "") !== (hsVal ?? "");
+
+    if (!localChanged && !hubspotChanged) continue; // no change on either side
+
+    const item: PreflightField = {
+      field: f,
+      label: PREFLIGHT_FIELD_MAP[f] ?? f,
+      base,
+      local: userVal,
+      hubspot: hsVal,
+      localChanged,
+      hubspotChanged,
+      isConflict: localChanged && hubspotChanged,
+    };
+
+    if (item.isConflict) trueConflicts.push(item);
+    else if (hubspotChanged) hubspotOnly.push(item);
+    else userOnly.push(item);
+  }
+
+  return {
+    success: true,
+    data: {
+      hasChanges: trueConflicts.length > 0 || hubspotOnly.length > 0,
+      trueConflicts,
+      hubspotOnly,
+      userOnly,
+    },
+  };
 }

@@ -3,11 +3,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AiInsightsPanel } from "@/components/contacts/AiInsightsPanel";
 import { ConflictBanner } from "@/components/contacts/ConflictBanner";
-import { ContactForm } from "@/components/contacts/ContactForm";
+import { ContactFormWrapper } from "@/components/contacts/ContactFormWrapper";
 import { ContactTimeline } from "@/components/contacts/ContactTimeline";
+import { ContactProperties } from "@/components/contacts/ContactProperties";
+import { ContactNotes } from "@/components/contacts/ContactNotes";
 import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
-import { ContactFormWrapper } from "@/components/contacts/ContactFormWrapper";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -148,20 +149,23 @@ export default async function ContactDetailPage({ params }: Props) {
             <ContactFormWrapper
               contactId={contact.id}
               orgId={orgId}
-              formKey={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title].join("|")}
+              formKey={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title, (contact.properties as Record<string,string|null>|null)?.message].join("|")}
               initial={{
                 firstName: contact.first_name,
-                lastName: contact.last_name,
-                email: contact.email,
-                phone: contact.phone,
-                company: contact.company,
-                jobTitle: contact.job_title,
+                lastName:  contact.last_name,
+                email:     contact.email,
+                phone:     contact.phone,
+                company:   contact.company,
+                jobTitle:  contact.job_title,
+                message:   (contact.properties as Record<string, string | null> | null)?.message ?? null,
               }}
             />
           </section>
 
+          <ContactProperties properties={contact.properties as Record<string, string | null> | null} />
           <AiInsightsPanel contactId={contact.id} />
           <SimilarContactsPanel contactId={contact.id} />
+          <ContactNotes contactId={contact.id} userEmail={user.email} />
         </div>
 
         {/* Right: activity timeline — shorter when empty, doesn't inflate left */}
