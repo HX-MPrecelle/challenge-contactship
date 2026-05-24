@@ -57,13 +57,14 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Bad Request", { status: 400 });
   }
 
-  // HubSpot retries any non-2xx, which would amplify duplicate processing.
-  // We deliberately respond 200 first and best-effort process the events;
-  // each upsert is idempotent (sync_hash), so a worst-case retry under
-  // failure is safe. processEvents catches per-event errors internally so
-  // a single broken event can't poison the whole batch.
-  void processEvents(events).catch((err) => {
-    console.error("[hubspot webhook] processing crashed", err);
+  // Respond 200 immediately so HubSpot doesn't retry, then process events
+  // via after() which guarantees execution completes even after the response
+  // is sent. `void` alone doesn't work in Vercel serverless — the runtime
+  // freezes the process once the response is returned.
+  after(async () => {
+    await processEvents(events).catch((err) => {
+      console.error("[hubspot webhook] processing crashed", err);
+    });
   });
 
   return new NextResponse("OK", { status: 200 });
