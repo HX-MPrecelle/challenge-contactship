@@ -7,7 +7,7 @@ import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactTimeline } from "@/components/contacts/ContactTimeline";
 import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
-import { ContactRealtimeRefresher } from "@/components/contacts/ContactRealtimeRefresher";
+import { ContactFormWrapper } from "@/components/contacts/ContactFormWrapper";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -60,7 +60,6 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <ContactRealtimeRefresher contactId={contact.id} orgId={orgId} />
       {/* Back navigation */}
       <Link
         href="/contacts"
@@ -146,9 +145,10 @@ export default async function ContactDetailPage({ params }: Props) {
             <h2 className="pb-4 text-lg font-semibold text-text-primary">
               {t("contact.section.data")}
             </h2>
-            <ContactForm
-              key={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title].join("|")}
+            <ContactFormWrapper
               contactId={contact.id}
+              orgId={orgId}
+              formKey={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title].join("|")}
               initial={{
                 firstName: contact.first_name,
                 lastName: contact.last_name,

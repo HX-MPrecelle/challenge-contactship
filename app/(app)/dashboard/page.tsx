@@ -109,7 +109,7 @@ export default async function DashboardPage() {
           label={t("dashboard.stat.conflicts")}
           value={conflicts ?? 0}
           tone={(conflicts ?? 0) > 0 ? "warning" : "default"}
-          href={(conflicts ?? 0) > 0 ? "/conflicts" : undefined}
+          href={(conflicts ?? 0) > 0 ? "/contacts?status=conflict" : undefined}
         />
         {/* Sync health stat — same height as StatCard via h-full */}
         <div className="flex h-full flex-col justify-between gap-3 rounded-xl border border-border-default bg-bg-surface px-4 py-4">
