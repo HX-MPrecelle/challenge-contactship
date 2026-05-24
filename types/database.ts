@@ -116,12 +116,14 @@ export type Database = {
           properties: Json
           sync_hash: string | null
           sync_status: string
+          base_state: Json | null
           updated_at: string
           website: string | null
         }
         Insert: {
           city?: string | null
           company?: string | null
+          base_state?: Json | null
           country?: string | null
           created_at?: string
           email?: string | null
@@ -166,6 +168,7 @@ export type Database = {
           properties?: Json
           sync_hash?: string | null
           sync_status?: string
+          base_state?: Json | null
           updated_at?: string
           website?: string | null
         }
