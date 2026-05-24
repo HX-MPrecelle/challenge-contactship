@@ -147,6 +147,7 @@ export default async function ContactDetailPage({ params }: Props) {
               {t("contact.section.data")}
             </h2>
             <ContactForm
+              key={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title].join("|")}
               contactId={contact.id}
               initial={{
                 firstName: contact.first_name,
