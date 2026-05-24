@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { AI_MODEL_ID } from "@/lib/ai/config";
+import type { AgentPreferences } from "@/actions/agent";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -62,7 +63,8 @@ export async function runFollowUpAgent(
   admin: AdminClient,
   orgId: string,
   locale = "es",
-  thresholdDays = 30
+  thresholdDays = 30,
+  preferences?: AgentPreferences
 ): Promise<AgentRunResult> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY not configured");
@@ -138,6 +140,20 @@ export async function runFollowUpAgent(
     ? "Respond in English."
     : "Respondé en español rioplatense.";
 
+  // Build personalization context from user's approve/dismiss history
+  let personalizationCtx = "";
+  if (preferences && (preferences.dismissedPatterns.length > 0 || preferences.preferredPatterns.length > 0)) {
+    const dismissed = preferences.dismissedPatterns
+      .map(p => `${p.action_type} para ${p.lifecycle_stage ?? "any stage"} (descartado ${p.count} veces)`)
+      .join(", ");
+    const preferred = preferences.preferredPatterns
+      .slice(0, 3)
+      .map(p => `${p.action_type} para ${p.lifecycle_stage ?? "any stage"} (aprobado ${p.count} veces)`)
+      .join(", ");
+    if (dismissed) personalizationCtx += `\nPatrones que el usuario RECHAZA consistentemente: ${dismissed}. NO generes estas combinaciones.`;
+    if (preferred) personalizationCtx += `\nPatrones que el usuario APRUEBA consistentemente: ${preferred}. Priorizá estos.`;
+  }
+
   let actionsGenerated = 0;
   let errors = 0;
 
@@ -160,7 +176,7 @@ export async function runFollowUpAgent(
         system: `Sos un agente de ventas B2B autónomo. Revisás contactos en riesgo y generás recomendaciones de acción específicas. ${langInstr}
 
 Para emails: sé conciso, personalizado y orientado a reapertura de la conversación. Máximo 150 palabras en el cuerpo.
-Para alertas: sé directo con la señal de riesgo y la acción recomendada.`,
+Para alertas: sé directo con la señal de riesgo y la acción recomendada.${personalizationCtx}`,
         prompt: `Generá una acción para este contacto:\n\n${contactCtx}`,
       });
 

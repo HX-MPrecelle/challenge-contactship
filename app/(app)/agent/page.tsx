@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { Bot } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getPendingAgentActions } from "@/actions/agent";
+import { getPendingAgentActions, getAgentStats } from "@/actions/agent";
 import { AgentInbox } from "@/components/agent/AgentInbox";
 import {
   createT,
@@ -28,8 +28,15 @@ export default async function AgentPage() {
   const locale: Locale = rawLocale && SUPPORTED_LOCALES.includes(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const t = createT(locale);
 
-  const result = await getPendingAgentActions();
-  const actions = result.success ? result.data : [];
+  const [actionsResult, statsResult] = await Promise.all([
+    getPendingAgentActions(),
+    getAgentStats(),
+  ]);
+
+  const actions = actionsResult.success ? actionsResult.data : [];
+  const stats   = statsResult.success
+    ? statsResult.data
+    : { pending: 0, approved: 0, dismissed: 0, acted: 0, total: 0, approvalRate: 0 };
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
@@ -43,7 +50,7 @@ export default async function AgentPage() {
         </div>
       </header>
 
-      <AgentInbox initialActions={actions} locale={locale} orgId={orgId} />
+      <AgentInbox initialActions={actions} locale={locale} orgId={orgId} stats={stats} />
     </main>
   );
 }
