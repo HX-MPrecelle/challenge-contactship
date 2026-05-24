@@ -155,17 +155,25 @@ const HUBSPOT_PROP_MAP: Record<ConflictField, string> = {
   job_title: "jobtitle",
 };
 
+export type ConflictDiffField = {
+  field: ConflictField;
+  label: string;
+  base: string | null;        // common ancestor (last agreed state)
+  local: string | null;       // current local value
+  hubspot: string | null;     // rejected HubSpot value
+  localChanged: boolean;      // local diverged from base
+  hubspotChanged: boolean;    // hubspot diverged from base
+  isConflict: boolean;        // true conflict: both sides changed this field
+  differs: boolean;           // kept for backward compat
+};
+
 export type ConflictDiff = {
   contactId: string;
   hubspotId: string;
   detectedAt: string | null;
-  fields: {
-    field: ConflictField;
-    label: string;
-    local: string | null;
-    hubspot: string | null;
-    differs: boolean;
-  }[];
+  fields: ConflictDiffField[];
+  autoMergedFields: string[];  // fields that can be auto-merged (only one side changed)
+  hasBaseState: boolean;       // whether 3-way diff is available
 };
 
 const FIELD_LABEL: Record<ConflictField, string> = {
@@ -229,19 +237,29 @@ export async function getConflictDiff(
     .limit(1)
     .maybeSingle();
 
-  const hubspotState = (conflictEvent?.after_state ?? {}) as Record<
-    string,
-    string | null | undefined
-  >;
+  const afterState = (conflictEvent?.after_state ?? {}) as Record<string, unknown>;
+  const hubspotState = afterState as Record<string, string | null | undefined>;
 
-  const fields = CONFLICT_FIELDS.map((field) => {
-    const local = (contact[field] ?? null) as string | null;
+  // Extract 3-way merge metadata stored by the enhanced conflict detection
+  const rawBase = afterState.base_state as Record<string, string | null> | null ?? null;
+  const autoMergedFields = (afterState.auto_merged_fields as string[] | undefined) ?? [];
+  const hasBaseState = rawBase !== null;
+
+  const fields: ConflictDiffField[] = CONFLICT_FIELDS.map((field) => {
+    const base    = hasBaseState ? (rawBase[field] ?? null) : null;
+    const local   = (contact[field] ?? null) as string | null;
     const hubspot = (hubspotState[field] ?? null) as string | null;
+    const localChanged   = hasBaseState && (base ?? "") !== (local ?? "");
+    const hubspotChanged = hasBaseState && (base ?? "") !== (hubspot ?? "");
     return {
       field,
       label: FIELD_LABEL[field],
+      base,
       local,
       hubspot,
+      localChanged,
+      hubspotChanged,
+      isConflict: localChanged && hubspotChanged,
       differs: (local ?? "") !== (hubspot ?? ""),
     };
   });
@@ -253,6 +271,8 @@ export async function getConflictDiff(
       hubspotId: contact.hubspot_id,
       detectedAt: conflictEvent?.created_at ?? null,
       fields,
+      autoMergedFields,
+      hasBaseState,
     },
   };
 }
@@ -345,12 +365,25 @@ export async function resolveConflictMerge(
     }
 
     const admin = createServiceClient();
-    const text = buildContactText(normalizeHubSpotContact(fresh));
+    const normalized = normalizeHubSpotContact(fresh);
+    const text = buildContactText(normalized);
     const embeddings = await embedContacts([{ key: fresh.id, text }]);
     await upsertContactFromHubSpot(admin, orgId, fresh, {
       embedding: embeddings?.[0]?.embedding,
       direction: "local_to_hubspot",
     });
+    // Advance base_state to the resolved merged values so the next diff
+    // has the correct common ancestor.
+    await admin.from("contacts").update({
+      base_state: {
+        first_name: normalized.firstName,
+        last_name:  normalized.lastName,
+        email:      normalized.email,
+        phone:      normalized.phone,
+        company:    normalized.company,
+        job_title:  normalized.jobTitle,
+      },
+    }).eq("id", row.id);
 
     await admin
       .from("contacts")

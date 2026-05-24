@@ -7,6 +7,32 @@ import { shouldIncludeProperty } from "@/lib/hubspot/properties";
 
 const CONFLICT_WINDOW_MS = 5 * 60 * 1000;
 
+// The 6 fields tracked for 3-way merge conflict detection
+const MERGE_FIELDS = [
+  "first_name", "last_name", "email", "phone", "company", "job_title",
+] as const;
+type MergeField = typeof MERGE_FIELDS[number];
+type MergeState = Record<MergeField, string | null>;
+
+function toMergeState(c: NormalizedContact): MergeState {
+  return {
+    first_name: c.firstName,
+    last_name:  c.lastName,
+    email:      c.email,
+    phone:      c.phone,
+    company:    c.company,
+    job_title:  c.jobTitle,
+  };
+}
+
+function getChangedFields(base: MergeState, current: MergeState): Set<MergeField> {
+  const changed = new Set<MergeField>();
+  for (const f of MERGE_FIELDS) {
+    if ((base[f] ?? null) !== (current[f] ?? null)) changed.add(f);
+  }
+  return changed;
+}
+
 type AdminClient = SupabaseClient<Database>;
 
 export type NormalizedContact = {
@@ -156,7 +182,7 @@ export async function upsertContactFromHubSpot(
   const { data: existing, error: lookupError } = await admin
     .from("contacts")
     .select(
-      "id, sync_hash, hubspot_updated_at, local_updated_at"
+      "id, sync_hash, hubspot_updated_at, local_updated_at, base_state, first_name, last_name, email, phone, company, job_title"
     )
     .eq("org_id", orgId)
     .eq("hubspot_id", normalized.hubspotId)
@@ -193,19 +219,91 @@ export async function upsertContactFromHubSpot(
       return { type: "skipped", reason: "out_of_order" };
     }
 
+    const rawBase = existing.base_state as Record<string, string | null> | null;
+
+    if (rawBase) {
+      // ── 3-way merge ────────────────────────────────────────────────────────
+      // We have a common ancestor (base_state). Compute what each side changed.
+      const base: MergeState = {
+        first_name: rawBase.first_name ?? null,
+        last_name:  rawBase.last_name  ?? null,
+        email:      rawBase.email      ?? null,
+        phone:      rawBase.phone      ?? null,
+        company:    rawBase.company    ?? null,
+        job_title:  rawBase.job_title  ?? null,
+      };
+
+      const localState: MergeState = {
+        first_name: (existing as Record<string, string | null>).first_name ?? null,
+        last_name:  (existing as Record<string, string | null>).last_name  ?? null,
+        email:      (existing as Record<string, string | null>).email      ?? null,
+        phone:      (existing as Record<string, string | null>).phone      ?? null,
+        company:    (existing as Record<string, string | null>).company    ?? null,
+        job_title:  (existing as Record<string, string | null>).job_title  ?? null,
+      };
+
+      const hubspotState = toMergeState(normalized);
+      const localChanged   = getChangedFields(base, localState);
+      const hubspotChanged = getChangedFields(base, hubspotState);
+
+      // Fields changed on BOTH sides → real conflict; needs manual resolution
+      const trueConflicts    = new Set([...localChanged].filter(f => hubspotChanged.has(f)));
+      // Fields changed only by HubSpot → safe to apply automatically
+      const autoFromHubspot  = new Set([...hubspotChanged].filter(f => !localChanged.has(f)));
+
+      if (trueConflicts.size > 0) {
+        // Flag the contact and store rich conflict metadata so the diff UI
+        // can show base → local change AND base → HubSpot change per field.
+        const conflictAfterState = Object.assign(
+          {},
+          serializeContact(normalized) as Record<string, unknown>,
+          {
+            base_state:         rawBase,
+            conflict_fields:    [...trueConflicts],
+            auto_merged_fields: [...autoFromHubspot],
+          }
+        );
+        await admin.from("contacts").update({ sync_status: "conflict" }).eq("id", existing.id);
+        await logSyncEvent(admin, {
+          orgId, contactId: existing.id, hubspotId: normalized.hubspotId,
+          direction, eventType: "conflict", afterState: conflictAfterState as Json,
+        });
+        return { type: "conflict", contactId: existing.id };
+      }
+
+      // No true conflicts — auto-merge: apply HubSpot's changes while
+      // preserving any local edits to fields HubSpot didn't touch.
+      const mergeRow = buildUpsertRow(orgId, normalized, incomingHash, options?.embedding ?? undefined);
+      for (const f of localChanged) {
+        if (!hubspotChanged.has(f)) {
+          // Keep local value — local edited this, HubSpot didn't
+          (mergeRow as Record<string, unknown>)[f] = localState[f];
+        }
+      }
+      // Advance base_state to the new HubSpot values (merged state is now the new base)
+      (mergeRow as Record<string, unknown>).base_state = hubspotState as unknown as Json;
+
+      const { data: merged, error: mergeError } = await admin
+        .from("contacts")
+        .upsert(mergeRow, { onConflict: "org_id,hubspot_id" })
+        .select("id")
+        .single();
+      if (mergeError || !merged) throw new Error(`auto-merge failed: ${mergeError?.message ?? "no row"}`);
+      await logSyncEvent(admin, {
+        orgId, contactId: merged.id, hubspotId: normalized.hubspotId,
+        direction, eventType: "update", afterState: serializeContact(normalized),
+      });
+      return { type: "updated", contactId: merged.id, orgContact: normalized };
+    }
+
+    // ── Fallback: no base_state yet (contact predates this feature) ──────────
+    // Use the original timestamp-based heuristic.
     const localTs = new Date(existing.local_updated_at).getTime();
     if (localTs > incomingTs && now - localTs < CONFLICT_WINDOW_MS) {
-      await admin
-        .from("contacts")
-        .update({ sync_status: "conflict" })
-        .eq("id", existing.id);
+      await admin.from("contacts").update({ sync_status: "conflict" }).eq("id", existing.id);
       await logSyncEvent(admin, {
-        orgId,
-        contactId: existing.id,
-        hubspotId: normalized.hubspotId,
-        direction,
-        eventType: "conflict",
-        afterState: serializeContact(normalized),
+        orgId, contactId: existing.id, hubspotId: normalized.hubspotId,
+        direction, eventType: "conflict", afterState: serializeContact(normalized),
       });
       return { type: "conflict", contactId: existing.id };
     }
@@ -297,6 +395,16 @@ function buildUpsertRow(
     sync_hash: syncHash,
     sync_status: "synced",
     is_archived: false,
+    // Advance base_state on every successful sync so future 3-way diffs
+    // have an accurate common ancestor.
+    base_state: {
+      first_name: c.firstName,
+      last_name:  c.lastName,
+      email:      c.email,
+      phone:      c.phone,
+      company:    c.company,
+      job_title:  c.jobTitle,
+    } as unknown as Json,
   };
   if (embedding) {
     // The Supabase typings expose pgvector as `string | null`. The client
