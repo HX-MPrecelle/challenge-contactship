@@ -15,6 +15,7 @@ type Props = {
     phone: string | null;
     company: string | null;
     jobTitle: string | null;
+    message: string | null;
   };
 };
 

@@ -235,6 +235,28 @@ export type Database = {
           },
         ]
       }
+      contact_notes: {
+        Row: {
+          id: string
+          org_id: string
+          contact_id: string
+          user_id: string | null
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          contact_id: string
+          user_id?: string | null
+          content: string
+          created_at?: string
+        }
+        Update: {
+          content?: string
+        }
+        Relationships: []
+      }
       agent_actions: {
         Row: {
           id: string
