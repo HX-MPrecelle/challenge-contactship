@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useI18n } from "@/lib/i18n/context";
 import { BarChart3, Loader2, RefreshCw, Search, Sparkles, Trash2, X } from "lucide-react";
@@ -139,6 +139,15 @@ export function ContactList({
   }
 
   // ── Realtime subscription ─────────────────────────────────────────────────
+  // Debounced router.refresh() so server re-fetches count + current page after
+  // any webhook-driven change (e.g. a HubSpot contact update arriving via webhook
+  // may affect a different page than what's currently displayed).
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function scheduleRefresh() {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => { router.refresh(); }, 800);
+  }
+
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
@@ -149,6 +158,7 @@ export function ContactList({
             const row = payload.new as ContactRow;
             if (row.is_archived) return;
             setContacts((prev) => prev.some((c) => c.id === row.id) ? prev : [row, ...prev]);
+            scheduleRefresh();
           }
           if (payload.eventType === "UPDATE") {
             const row = payload.new as ContactRow;
@@ -156,15 +166,20 @@ export function ContactList({
               if (row.is_archived) return prev.filter((c) => c.id !== row.id);
               return prev.map((c) => (c.id === row.id ? row : c));
             });
+            scheduleRefresh();
           }
           if (payload.eventType === "DELETE") {
             const row = payload.old as Partial<ContactRow>;
             setContacts((prev) => prev.filter((c) => c.id !== row.id));
+            scheduleRefresh();
           }
         }
       ).subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [orgId]);
+    return () => {
+      supabase.removeChannel(channel);
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    };
+  }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── AI filter overlay (client-side on loaded page) ────────────────────────
   const displayed = aiFilter

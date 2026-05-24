@@ -7,6 +7,7 @@ import { ContactForm } from "@/components/contacts/ContactForm";
 import { ContactTimeline } from "@/components/contacts/ContactTimeline";
 import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
+import { ContactRealtimeRefresher } from "@/components/contacts/ContactRealtimeRefresher";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -59,6 +60,7 @@ export default async function ContactDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
+      <ContactRealtimeRefresher contactId={contact.id} />
       {/* Back navigation */}
       <Link
         href="/contacts"

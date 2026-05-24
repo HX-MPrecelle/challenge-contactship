@@ -18,6 +18,7 @@ import {
   type Locale,
 } from "@/lib/i18n/index";
 import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
+import { DashboardAgentWidget } from "@/components/dashboard/DashboardAgentWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,8 @@ export default async function DashboardPage() {
         }))}
         total={total ?? 0}
       />
+
+      <DashboardAgentWidget />
 
       <DashboardPriorities />
 
