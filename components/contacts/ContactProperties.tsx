@@ -2,7 +2,28 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { shouldIncludeProperty } from "@/lib/hubspot/properties";
+// Inline filter — mirrors shouldIncludeProperty from lib/hubspot/properties.ts
+// without the server-only import so this client component can use it.
+const SKIP_PREFIXES = [
+  "hs_object_", "hs_pipeline", "hs_sequence", "hs_conversation_",
+  "hs_calculated_", "hs_predictive", "hs_avatar_", "hs_ip_",
+  "hs_time_between", "hs_v2_", "hs_content_", "hs_merged_",
+  "hs_created_by", "hs_updated_by", "hs_all_", "hs_latest_source",
+  "hs_sa_first_", "hs_form_", "hs_social_",
+];
+const SKIP_EXACT = new Set([
+  "hs_object_id", "createdate", "lastmodifieddate", "hs_lastmodifieddate",
+  "hs_timestamp", "hs_additional_emails", "hubspot_owner_id",
+  "hubspot_owner_assigneddate", "hubspot_team_id", "hs_email_bad_address",
+  "hs_is_unworked", "hs_full_name", "associatedcompanyid",
+]);
+function includeProperty(key: string, value: string | null | undefined): boolean {
+  if (!value || value.trim() === "" || value === "0" || value === "false") return false;
+  if (SKIP_EXACT.has(key)) return false;
+  for (const p of SKIP_PREFIXES) if (key.startsWith(p)) return false;
+  if (/_(id|ids|at|date|time)$/.test(key) && /^\d+$/.test(value)) return false;
+  return true;
+}
 
 // Common HubSpot field labels in Spanish. Custom fields not in this map
 // fall back to a formatted version of the key name.
@@ -66,7 +87,7 @@ export function ContactProperties({ properties }: Props) {
   if (!properties) return null;
 
   const entries = Object.entries(properties)
-    .filter(([k, v]) => !MAIN_FORM_KEYS.has(k) && shouldIncludeProperty(k, v))
+    .filter(([k, v]) => !MAIN_FORM_KEYS.has(k) && includeProperty(k, v))
     .map(([k, v]) => ({ key: k, label: formatKey(k), value: formatValue(k, v!) }))
     .sort((a, b) => {
       // Known labels first
