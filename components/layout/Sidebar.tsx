@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
-  AlertTriangle,
   BarChart3,
   Bot,
   Check,
@@ -31,7 +30,6 @@ export function Sidebar({ userEmail, locale }: Props) {
     { href: "/dashboard", label: t("nav.dashboard"), Icon: LayoutDashboard },
     { href: "/contacts",  label: t("nav.contacts"),  Icon: Users },
     { href: "/agent",     label: t("nav.agent"),      Icon: Bot },
-    { href: "/conflicts", label: t("nav.conflicts"),  Icon: AlertTriangle },
     { href: "/insights",  label: t("nav.insights"),   Icon: BarChart3 },
     { href: "/chat",      label: t("nav.chat"),        Icon: MessageSquare },
     { href: "/sync",      label: t("nav.sync"),        Icon: Activity },

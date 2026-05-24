@@ -1,26 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
-/**
- * Invisible component that subscribes to Supabase Realtime for a specific
- * contact and calls router.refresh() when it changes, causing the parent
- * Server Component to re-fetch fresh data without a full page reload.
- *
- * Uses the org_id filter (same pattern proven to work in ContactList) and
- * checks contact ID in the callback — filtering by primary key directly
- * is unreliable in Supabase Realtime.
- */
 export function ContactRealtimeRefresher({
   contactId,
   orgId,
+  isDirty = false,
 }: {
   contactId: string;
   orgId: string;
+  isDirty?: boolean;
 }) {
   const router = useRouter();
+  const isDirtyRef = useRef(isDirty);
+  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -28,17 +24,17 @@ export function ContactRealtimeRefresher({
       .channel(`contact-detail-${contactId}`)
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "contacts",
-          filter: `org_id=eq.${orgId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "contacts", filter: `org_id=eq.${orgId}` },
         (payload) => {
-          // Only refresh when THIS contact changed
-          if ((payload.new as { id: string }).id === contactId) {
-            router.refresh();
+          if ((payload.new as { id: string }).id !== contactId) return;
+
+          if (isDirtyRef.current) {
+            toast.warning(
+              "Este contacto fue modificado en HubSpot. Tus cambios sin guardar se actualizaron con los valores nuevos.",
+              { duration: 5000 }
+            );
           }
+          router.refresh();
         }
       )
       .subscribe();
