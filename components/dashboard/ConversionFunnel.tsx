@@ -60,11 +60,9 @@ export function ConversionFunnel({ stageCounts, total }: Props) {
               <span className="w-10 shrink-0 text-right font-mono text-[10px] text-text-muted">
                 {pct}%
               </span>
-              {convRate !== null && (
-                <span className={`w-12 shrink-0 text-right text-[10px] font-mono ${convRate >= 50 ? "text-success" : convRate >= 20 ? "text-warning" : "text-error"}`}>
-                  {convRate}% ↓
-                </span>
-              )}
+              <span className={`w-12 shrink-0 text-right text-[10px] font-mono ${convRate === null ? "text-text-muted" : convRate >= 50 ? "text-success" : convRate >= 20 ? "text-warning" : "text-error"}`}>
+                {convRate !== null ? `${convRate}% ↓` : "—"}
+              </span>
             </Link>
           );
         })}
