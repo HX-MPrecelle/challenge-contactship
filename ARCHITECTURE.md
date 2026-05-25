@@ -167,8 +167,28 @@ The `match_contacts` RPC returns results above a configurable cosine similarity 
 | Cache storage | `org_ai_cache` table | In-memory Map doesn't survive Vercel deploys or multi-instance deployments |
 | Chat framework | Vercel AI SDK v6 (`streamText` + `createUIMessageStream`) | Tool calling + streaming in one API; SSE handled transparently |
 | Auth | Supabase SSR (`@supabase/ssr`) | Session in cookies; middleware refreshes token transparently |
-| i18n | Custom `createT()` with 481 keys (ES/EN) | No runtime dependency; trivial to extend; dialect-aware (rioplatense) |
-| Testing | Vitest (unit) + Playwright (E2E) | Vitest for fast feedback on pure functions; Playwright for full-stack flows |
+| i18n | Custom `createT()` with 481+ keys (ES/EN) | No runtime dependency; trivial to extend; dialect-aware (rioplatense) |
+| Testing | Vitest (unit, 36 tests) + Playwright (E2E) | Vitest for fast feedback on pure functions; Playwright for full-stack flows |
+| RLS security | `app_metadata.org_id` (not `user_metadata`) | `user_metadata` is user-editable; `app_metadata` is service-role-only |
+| Conflict detection | 3-way merge with `base_state` | 2-way "pick one side" can't auto-merge non-overlapping changes |
+| Notifications | Supabase Realtime on `notifications` table | Zero infrastructure; same connection used for contacts realtime |
+
+---
+
+## Database Schema (16 migrations)
+
+| Table | Purpose |
+|---|---|
+| `organizations` | Multi-tenant workspaces |
+| `hubspot_connections` | OAuth tokens (via Vault), portal metadata |
+| `contacts` | Local mirror with `embedding`, `base_state`, `sync_hash` |
+| `sync_events` | Immutable audit log per contact change |
+| `ai_insights` | Cached per-contact AI analysis (5 types: summary, next_action, risk_signal, lead_score, confidence) |
+| `chat_conversations` + `chat_messages` | Multi-turn chat history with embeddings |
+| `agent_actions` | Autonomous agent recommendations (pending/approved/dismissed/acted) |
+| `org_ai_cache` | Org-level AI cache (top priorities, etc.) |
+| `contact_notes` | Internal team notes — not synced to HubSpot |
+| `notifications` | In-app notifications with Realtime publication |
 
 ---
 
@@ -176,15 +196,18 @@ The `match_contacts` RPC returns results above a configurable cosine similarity 
 
 | Area | File |
 |---|---|
-| HubSpot sync | `lib/hubspot/sync.ts` |
+| HubSpot sync + 3-way merge | `lib/hubspot/sync.ts` |
+| 3-way merge pure logic | `lib/utils/3way-merge.ts` |
 | Embeddings | `lib/ai/embeddings.ts` |
 | RAG retrieval | `lib/ai/chat.ts` |
 | Cross-session memory | `lib/ai/memory.ts` |
 | Insights generation | `lib/ai/insights.ts` |
 | Autonomous agent | `lib/ai/agent.ts` |
+| Notification helper | `lib/notifications.ts` |
 | Chat streaming | `app/api/chat/route.ts` |
-| Hourly sync cron | `app/api/cron/sync/route.ts` |
-| Daily agent cron | `app/api/cron/agent/route.ts` |
+| Sync cron | `app/api/cron/sync/route.ts` |
+| Agent cron | `app/api/cron/agent/route.ts` |
 | HubSpot webhook | `app/api/webhooks/hubspot/route.ts` |
-| DB migrations | `supabase/migrations/` |
-| Type definitions | `types/database.ts` |
+| DB migrations | `supabase/migrations/` (001–016) |
+| Unit tests | `tests/unit/` (5 files, 36 tests) |
+| E2E tests | `tests/e2e/` (13 spec files) |
