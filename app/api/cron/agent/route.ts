@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { runFollowUpAgent } from "@/lib/ai/agent";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,17 @@ export async function GET(request: NextRequest) {
       // Use AGENT_THRESHOLD_DAYS env var to override (default 0 for demos).
       const threshold = parseInt(process.env.AGENT_THRESHOLD_DAYS ?? "0", 10);
       const result = await runFollowUpAgent(admin, conn.org_id, "es", threshold);
+
+      if (result.actionsGenerated > 0) {
+        const n = result.actionsGenerated;
+        await createNotification(admin, conn.org_id, {
+          type: "agent_run",
+          title: `Agente IA — ${n} acción${n === 1 ? "" : "es"} nueva${n === 1 ? "" : "s"}`,
+          body: "El agente detectó contactos en riesgo y generó recomendaciones.",
+          link: "/agent",
+        });
+      }
+
       report.push({ orgId: conn.org_id, ...result });
     } catch (err) {
       report.push({
