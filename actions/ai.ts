@@ -752,7 +752,15 @@ const PipelineAlertSchema = z.object({
         description: z.string().max(220),
         count: z.number().int().min(0),
         cta: z.string().max(60),
-        filterPath: z.string().max(100).nullable(),
+        filterPath: z.enum([
+          "/contacts",
+          "/contacts?status=conflict",
+          "/contacts?status=error",
+          "/contacts?lifecycle=opportunity",
+          "/contacts?lifecycle=customer",
+          "/contacts?lifecycle=salesqualifiedlead",
+          "/contacts?lifecycle=lead",
+        ]).nullable(),
       })
     )
     .min(1)
@@ -816,8 +824,15 @@ export async function generatePipelineAlerts(input: {
 - Contacts not replying (ATTEMPTED_TO_CONTACT): ${attemptedNoReply}
 - SQL with no activity >14 days: ${sqlNoActivity}
 
-Generate 3-5 prioritized alerts. Include a filterPath like "/contacts?status=conflict" when relevant.
-For stalled opps use "/contacts" as filterPath.`,
+Generate 3-5 prioritized alerts. The filterPath MUST be one of these exact values or null:
+- "/contacts?status=conflict" — for sync conflicts
+- "/contacts?lifecycle=opportunity" — for stalled opportunities
+- "/contacts?lifecycle=customer" — for at-risk customers
+- "/contacts?lifecycle=salesqualifiedlead" — for stalling SQLs
+- "/contacts?status=error" — for sync errors
+- "/contacts" — generic fallback
+- null — when no filter applies
+NEVER invent other paths. Only use the exact strings above.`,
     });
     return { success: true, data: object };
   } catch (err) {
