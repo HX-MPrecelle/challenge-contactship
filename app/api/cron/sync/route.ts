@@ -6,6 +6,7 @@ import { upsertContactFromHubSpot } from "@/lib/hubspot/sync";
 import { getPortalContactProperties } from "@/lib/hubspot/properties";
 import { backfillMissingEmbeddings } from "@/lib/ai/embeddings";
 import { HubSpotAuthError } from "@/lib/errors";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -109,6 +110,16 @@ export async function GET(request: NextRequest) {
       const { filled } = await backfillMissingEmbeddings(admin, connection.org_id);
       if (filled > 0) {
         console.log(`[cron sync] embedded ${filled} contacts for org ${connection.org_id}`);
+      }
+
+      // Notify the org if any contacts were synced
+      if (processed > 0) {
+        await createNotification(admin, connection.org_id, {
+          type: "hubspot_update",
+          title: `Sync diario completado — ${processed} contacto${processed === 1 ? "" : "s"} actualizados`,
+          body: "El cron de sincronización diaria finalizó correctamente.",
+          link: "/sync",
+        });
       }
 
       report.push({ orgId: connection.org_id, processed });
