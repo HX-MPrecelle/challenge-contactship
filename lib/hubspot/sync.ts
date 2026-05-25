@@ -7,12 +7,13 @@ import { shouldIncludeProperty } from "@/lib/hubspot/properties";
 
 const CONFLICT_WINDOW_MS = 5 * 60 * 1000;
 
-// The 6 fields tracked for 3-way merge conflict detection
-const MERGE_FIELDS = [
-  "first_name", "last_name", "email", "phone", "company", "job_title",
-] as const;
-type MergeField = typeof MERGE_FIELDS[number];
-type MergeState = Record<MergeField, string | null>;
+import {
+  MERGE_FIELDS,
+  type MergeField,
+  type MergeState,
+  getChangedFields,
+  analyzeThreeWayMerge,
+} from "@/lib/utils/3way-merge";
 
 function toMergeState(c: NormalizedContact): MergeState {
   return {
@@ -23,14 +24,6 @@ function toMergeState(c: NormalizedContact): MergeState {
     company:    c.company,
     job_title:  c.jobTitle,
   };
-}
-
-function getChangedFields(base: MergeState, current: MergeState): Set<MergeField> {
-  const changed = new Set<MergeField>();
-  for (const f of MERGE_FIELDS) {
-    if ((base[f] ?? null) !== (current[f] ?? null)) changed.add(f);
-  }
-  return changed;
 }
 
 type AdminClient = SupabaseClient<Database>;
@@ -243,15 +236,10 @@ export async function upsertContactFromHubSpot(
       };
 
       const hubspotState = toMergeState(normalized);
-      const localChanged   = getChangedFields(base, localState);
-      const hubspotChanged = getChangedFields(base, hubspotState);
+      const { trueConflicts, autoFromHubspot, hasConflict } =
+        analyzeThreeWayMerge(base, localState, hubspotState);
 
-      // Fields changed on BOTH sides → real conflict; needs manual resolution
-      const trueConflicts    = new Set([...localChanged].filter(f => hubspotChanged.has(f)));
-      // Fields changed only by HubSpot → safe to apply automatically
-      const autoFromHubspot  = new Set([...hubspotChanged].filter(f => !localChanged.has(f)));
-
-      if (trueConflicts.size > 0) {
+      if (hasConflict) {
         // Flag the contact and store rich conflict metadata so the diff UI
         // can show base → local change AND base → HubSpot change per field.
         const conflictAfterState = Object.assign(
@@ -274,11 +262,10 @@ export async function upsertContactFromHubSpot(
       // No true conflicts — auto-merge: apply HubSpot's changes while
       // preserving any local edits to fields HubSpot didn't touch.
       const mergeRow = buildUpsertRow(orgId, normalized, incomingHash, options?.embedding ?? undefined);
-      for (const f of localChanged) {
-        if (!hubspotChanged.has(f)) {
-          // Keep local value — local edited this, HubSpot didn't
-          (mergeRow as Record<string, unknown>)[f] = localState[f];
-        }
+      const { autoFromLocal } = analyzeThreeWayMerge(base, localState, hubspotState);
+      for (const f of autoFromLocal) {
+        // Keep local value — local edited this, HubSpot didn't
+        (mergeRow as Record<string, unknown>)[f] = localState[f];
       }
       // Advance base_state to the new HubSpot values (merged state is now the new base)
       (mergeRow as Record<string, unknown>).base_state = hubspotState as unknown as Json;
