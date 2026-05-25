@@ -32,12 +32,12 @@ export default async function AppLayout({
             {/* Desktop sidebar — always visible on md+ */}
             <Suspense fallback={<div className="hidden md:block w-[220px] shrink-0 border-r border-border-default bg-bg-surface" />}>
               <div className="hidden md:flex w-[220px] shrink-0">
-                <Sidebar userEmail={user.email ?? ""} locale={locale} />
+                <Sidebar userEmail={user.email ?? ""} locale={locale} orgId={orgId} />
               </div>
             </Suspense>
 
             {/* Mobile top bar + drawer */}
-            <MobileNav userEmail={user.email ?? ""} locale={locale} />
+            <MobileNav userEmail={user.email ?? ""} locale={locale} orgId={orgId} />
           </>
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>

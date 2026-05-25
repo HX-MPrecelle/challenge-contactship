@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import type { Locale } from "@/lib/i18n/index";
 
-type Props = { userEmail: string; locale: Locale };
+type Props = { userEmail: string; locale: Locale; orgId?: string };
 
-export function MobileNav({ userEmail, locale }: Props) {
+export function MobileNav({ userEmail, locale, orgId }: Props) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -75,7 +75,7 @@ export function MobileNav({ userEmail, locale }: Props) {
             <X size={18} />
           </button>
         </div>
-        <Sidebar userEmail={userEmail} locale={locale} />
+        <Sidebar userEmail={userEmail} locale={locale} orgId={orgId} />
       </div>
     </>
   );
