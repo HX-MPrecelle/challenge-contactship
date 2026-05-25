@@ -337,9 +337,9 @@ export function ContactList({
         </div>
       )}
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-border-default bg-bg-surface">
-        <table className="w-full text-sm">
+      {/* Table — horizontal scroll on mobile */}
+      <div className="overflow-x-auto rounded-xl border border-border-default bg-bg-surface">
+        <table className="w-full min-w-[520px] text-sm">
           <thead className="border-b border-border-default bg-bg-subtle">
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
               <th className="w-10 px-4 py-2.5">
@@ -351,10 +351,10 @@ export function ContactList({
                   }} />
               </th>
               <th className="px-4 py-2.5">{t("contacts.table.name")}</th>
-              <th className="px-4 py-2.5">{t("contacts.table.email")}</th>
+              <th className="hidden sm:table-cell px-4 py-2.5">{t("contacts.table.email")}</th>
               <th className="px-4 py-2.5">{t("contacts.table.company")}</th>
-              <th className="px-4 py-2.5">{t("contacts.table.jobTitle")}</th>
-              <th className="px-4 py-2.5">{t("contacts.table.stage")}</th>
+              <th className="hidden lg:table-cell px-4 py-2.5">{t("contacts.table.jobTitle")}</th>
+              <th className="hidden sm:table-cell px-4 py-2.5">{t("contacts.table.stage")}</th>
               <th className="px-4 py-2.5">{t("contacts.table.sync")}</th>
             </tr>
           </thead>
@@ -380,16 +380,16 @@ export function ContactList({
                       <span className="truncate font-medium" title={fullName}>{fullName}</span>
                     </Link>
                   </td>
-                  <td className={`max-w-[160px] px-4 ${rowPy}`}>
+                  <td className={`hidden sm:table-cell max-w-[160px] px-4 ${rowPy}`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate font-mono text-xs text-text-muted" title={c.email ?? ""}>{c.email ?? "—"}</Link>
                   </td>
                   <td className={`max-w-[140px] px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate" title={c.company ?? ""}>{c.company ?? "—"}</Link>
                   </td>
-                  <td className={`max-w-[140px] px-4 ${rowPy} text-text-secondary`}>
+                  <td className={`hidden lg:table-cell max-w-[140px] px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate" title={c.job_title ?? ""}>{c.job_title ?? "—"}</Link>
                   </td>
-                  <td className={`px-4 ${rowPy} text-text-secondary`}>
+                  <td className={`hidden sm:table-cell px-4 ${rowPy} text-text-secondary`}>
                     <Link href={`/contacts/${c.id}`} className="block truncate">{c.lifecycle_stage ?? "—"}</Link>
                   </td>
                   <td className={`px-4 ${rowPy}`}>

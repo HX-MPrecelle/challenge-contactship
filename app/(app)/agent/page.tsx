@@ -39,7 +39,7 @@ export default async function AgentPage() {
     : { pending: 0, approved: 0, dismissed: 0, acted: 0, total: 0, approvalRate: 0 };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
+    <main className="mx-auto max-w-3xl px-4 sm:px-6 py-6 sm:py-8">
       <header className="flex items-center gap-3 pb-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
           <Bot size={18} />

@@ -47,6 +47,7 @@ export function ContactsChat() {
   const [convId, setConvId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [showHistory, setShowHistory] = useState(false);
   const [input, setInput] = useState("");
   const [isCorrectingVoice, setIsCorrectingVoice] = useState(false);
 
@@ -177,8 +178,20 @@ export function ContactsChat() {
 
   return (
     <div className="flex h-full w-full">
-      {/* History rail */}
-      <aside className="flex w-[260px] shrink-0 flex-col border-r border-border-default bg-bg-surface">
+      {/* History rail — hidden on mobile, shown as overlay when toggled */}
+      {showHistory && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setShowHistory(false)}
+        />
+      )}
+      <aside className={[
+        "flex w-[260px] shrink-0 flex-col border-r border-border-default bg-bg-surface",
+        "md:relative md:translate-x-0 md:flex",
+        showHistory
+          ? "fixed inset-y-0 left-0 z-40 translate-x-0"
+          : "hidden md:flex",
+      ].join(" ")}>
         <div className="border-b border-border-default p-3">
           <Button
             variant="secondary"
@@ -239,8 +252,17 @@ export function ContactsChat() {
       {/* Conversation panel */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-border-default px-6 py-4">
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between border-b border-border-default px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Mobile: history toggle */}
+            <button
+              type="button"
+              onClick={() => setShowHistory(v => !v)}
+              className="md:hidden flex h-7 w-7 items-center justify-center rounded-md text-text-secondary hover:bg-bg-subtle"
+              aria-label="Historial"
+            >
+              <MessageSquare size={16} />
+            </button>
             <Link
               href="/dashboard"
               className="flex items-center gap-1 text-xs text-text-secondary transition-colors hover:text-text-primary"

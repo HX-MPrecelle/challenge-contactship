@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
@@ -25,11 +26,19 @@ export default async function AppLayout({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground md:flex-row">
         {showSidebar && (
-          <Suspense fallback={<div className="w-[220px] shrink-0 border-r border-border-default bg-bg-surface" />}>
-            <Sidebar userEmail={user.email ?? ""} locale={locale} />
-          </Suspense>
+          <>
+            {/* Desktop sidebar — always visible on md+ */}
+            <Suspense fallback={<div className="hidden md:block w-[220px] shrink-0 border-r border-border-default bg-bg-surface" />}>
+              <div className="hidden md:flex w-[220px] shrink-0">
+                <Sidebar userEmail={user.email ?? ""} locale={locale} />
+              </div>
+            </Suspense>
+
+            {/* Mobile top bar + drawer */}
+            <MobileNav userEmail={user.email ?? ""} locale={locale} />
+          </>
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>

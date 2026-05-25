@@ -15,7 +15,7 @@ export default async function InsightsPage() {
   const { t } = await getServerT();
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
       <BackButton />
       <header className="pb-8">
         <h1 className="text-2xl font-semibold text-text-primary">{t("insights.title")}</h1>

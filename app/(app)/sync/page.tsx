@@ -34,7 +34,7 @@ export default async function SyncPage() {
     .limit(20);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-8">
       <BackButton />
       <header className="flex items-start justify-between pb-6">
         <div>

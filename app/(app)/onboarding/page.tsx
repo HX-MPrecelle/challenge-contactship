@@ -41,7 +41,7 @@ export default async function OnboardingPage({ searchParams }: Props) {
       : 1;
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex min-h-screen items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
       <OnboardingStepper
         initialStep={initialStep}
         initialOrgName={org?.name ?? ""}

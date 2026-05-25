@@ -93,7 +93,7 @@ export default async function ContactsPage({ searchParams }: Props) {
   const totalCount = count ?? 0;
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
       <header className="flex items-center justify-between pb-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
