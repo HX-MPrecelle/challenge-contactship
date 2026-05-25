@@ -40,6 +40,8 @@ type Props = {
   statusFilter: SyncStatus | null;
   lifecycleFilter: string | null;
   searchQuery: string;
+  serverAiFilters?: AiFilterClause[];
+  serverAiExplain?: string;
   density?: "normal" | "compact";
 };
 
@@ -63,6 +65,8 @@ export function ContactList({
   statusFilter,
   lifecycleFilter,
   searchQuery,
+  serverAiFilters = [],
+  serverAiExplain = "",
   density = "normal",
 }: Props) {
   const { t } = useI18n();
@@ -101,7 +105,8 @@ export function ContactList({
 
   // Local state only for realtime updates and AI filter overlay
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
-  const [aiFilter, setAiFilter] = useState<AiFilter | null>(null);
+  // AI filter is now server-side — derive banner state from URL props
+  const hasAiFilter = serverAiFilters.length > 0;
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [isParsing, startParsing] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -139,17 +144,15 @@ export function ContactList({
     }, 350);
   }
 
-  // ── AI search ────────────────────────────────────────────────────────────
+  // ── AI search — server-side via URL params ───────────────────────────────
+  // Filters are serialized to ?aifilters=&aiexplain= so the server applies
+  // them in the DB query. This means pagination works across the full filtered
+  // dataset, not just the current page.
   function runAiSearch() {
     const q = localQuery.trim();
     if (!q) { toast.error(t("contacts.ai.error.empty")); return; }
 
-    // Clear ?q= IMMEDIATELY before the async call.
-    // The debounce may have set ?q= in the URL which causes the server to
-    // filter by ilike (returns 0 rows for natural language). We need the server
-    // to load all contacts so the AI filter can apply client-side on them.
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    navigate({ q: null, page: null });
 
     startParsing(async () => {
       const result = await naturalLanguageSearch({ query: q });
@@ -158,8 +161,14 @@ export function ContactList({
         toast.warning(t("contacts.ai.error.noFilters"));
         return;
       }
-      setAiFilter({ filters: result.data.filters, explanation: result.data.explanation, query: q });
       setLocalQuery("");
+      // Navigate with serialized filters — server applies them to DB query
+      navigate({
+        q: null,
+        page: null,
+        aifilters: encodeURIComponent(JSON.stringify(result.data.filters)),
+        aiexplain: encodeURIComponent(result.data.explanation),
+      });
     });
   }
 
@@ -213,10 +222,8 @@ export function ContactList({
     };
   }, [orgId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── AI filter overlay (client-side on loaded page) ────────────────────────
-  const displayed = aiFilter
-    ? contacts.filter((c) => aiFilter.filters.every((f) => matchesFilter(c, f)))
-    : contacts;
+  // AI filtering is server-side — contacts already filtered by DB query
+  const displayed = contacts;
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
   function toggleRow(id: string, e: React.MouseEvent) {
@@ -332,28 +339,28 @@ export function ContactList({
         )}
       </div>
 
-      {/* AI filter banner */}
-      {aiFilter && (
+      {/* AI filter banner — driven by server-side URL params */}
+      {hasAiFilter && serverAiExplain && (
         <div className="flex items-start justify-between gap-3 rounded-lg border border-brand/40 bg-brand-subtle px-4 py-2.5">
           <div className="flex items-start gap-2 text-sm">
             <Sparkles size={14} className="mt-0.5 shrink-0 text-brand-on-subtle" />
             <div className="flex flex-col gap-0.5">
               <span className="font-medium text-text-primary">{t("contacts.ai.applied")}</span>
-              <span className="text-xs text-text-secondary">{aiFilter.explanation}</span>
+              <span className="text-xs text-text-secondary">{decodeURIComponent(serverAiExplain)}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button type="button" size="sm" variant="secondary" onClick={() => setSummaryOpen(true)} disabled={displayed.length === 0} title={t("contacts.ai.summarize", { n: displayed.length })}>
-              <BarChart3 size={12} />{t("contacts.ai.summarize", { n: displayed.length })}
+            <Button type="button" size="sm" variant="secondary" onClick={() => setSummaryOpen(true)} disabled={totalCount === 0} title={t("contacts.ai.summarize", { n: totalCount })}>
+              <BarChart3 size={12} />{t("contacts.ai.summarize", { n: totalCount })}
             </Button>
-            <button type="button" onClick={() => setAiFilter(null)} className="text-xs text-text-secondary hover:text-text-primary" aria-label={t("contacts.filter.clear")}>
+            <button type="button" onClick={() => navigate({ aifilters: null, aiexplain: null, page: null })} className="text-xs text-text-secondary hover:text-text-primary" aria-label={t("contacts.filter.clear")}>
               <X size={14} />
             </button>
           </div>
         </div>
       )}
 
-      {aiFilter && <FilterSummaryDialog open={summaryOpen} onOpenChange={setSummaryOpen} query={aiFilter.query} filters={aiFilter.filters} />}
+      {hasAiFilter && <FilterSummaryDialog open={summaryOpen} onOpenChange={setSummaryOpen} query={serverAiExplain} filters={serverAiFilters} />}
 
       {/* Bulk actions bar */}
       {selected.size > 0 && (

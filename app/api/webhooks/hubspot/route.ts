@@ -109,7 +109,8 @@ async function processEvents(events: HubSpotWebhookEvent[]): Promise<void> {
     // Fetch all property definitions once per portal batch
     const portalProps = await getPortalContactProperties(client).catch(() => null);
 
-    const outcomes: Array<"updated" | "conflict" | "archived" | "skipped"> = [];
+    type Outcome = { status: "updated" | "conflict" | "archived" | "skipped"; contactId?: string; contactName?: string };
+    const outcomes: Outcome[] = [];
 
     for (const event of portalEvents) {
       try {
@@ -120,28 +121,39 @@ async function processEvents(events: HubSpotWebhookEvent[]): Promise<void> {
       }
     }
 
-    // Create summary notifications for this batch
-    const updated  = outcomes.filter(o => o === "updated").length;
-    const conflicts = outcomes.filter(o => o === "conflict").length;
-    const archived  = outcomes.filter(o => o === "archived").length;
+    const updatedOuts  = outcomes.filter(o => o.status === "updated");
+    const conflictOuts = outcomes.filter(o => o.status === "conflict");
+    const archivedOuts = outcomes.filter(o => o.status === "archived");
 
-    if (updated > 0 || archived > 0) {
+    if (updatedOuts.length > 0 || archivedOuts.length > 0) {
       const parts: string[] = [];
-      if (updated)  parts.push(`${updated} actualizado${updated === 1 ? "" : "s"}`);
-      if (archived) parts.push(`${archived} archivado${archived === 1 ? "" : "s"}`);
+      if (updatedOuts.length)  parts.push(`${updatedOuts.length} actualizado${updatedOuts.length === 1 ? "" : "s"}`);
+      if (archivedOuts.length) parts.push(`${archivedOuts.length} archivado${archivedOuts.length === 1 ? "" : "s"}`);
+
+      // If single contact updated → link directly to its detail page
+      const singleUpdate = updatedOuts.length === 1 && archivedOuts.length === 0 && updatedOuts[0]?.contactId;
+      const link = singleUpdate
+        ? `/contacts/${updatedOuts[0]!.contactId}`
+        : "/contacts";
+
+      const title = singleUpdate && updatedOuts[0]?.contactName
+        ? `${updatedOuts[0].contactName} fue actualizado desde HubSpot`
+        : `HubSpot — ${parts.join(", ")}`;
+
       await createNotification(admin, orgId, {
         type: "hubspot_update",
-        title: `HubSpot — ${parts.join(", ")}`,
-        body: `${parts.join(" y ")} desde tu portal de HubSpot.`,
-        link: "/contacts",
+        title,
+        body: singleUpdate ? "Click para ver el contacto actualizado." : `${parts.join(" y ")} desde tu portal de HubSpot.`,
+        link,
       });
     }
-    if (conflicts > 0) {
+    if (conflictOuts.length > 0) {
+      const singleConflict = conflictOuts.length === 1 && conflictOuts[0]?.contactId;
       await createNotification(admin, orgId, {
         type: "conflict",
-        title: `${conflicts} conflicto${conflicts === 1 ? "" : "s"} de sync detectado${conflicts === 1 ? "" : "s"}`,
-        body: "Revisá los contactos con conflicto y resolvelos.",
-        link: "/contacts?status=conflict",
+        title: `${conflictOuts.length} conflicto${conflictOuts.length === 1 ? "" : "s"} de sync detectado${conflictOuts.length === 1 ? "" : "s"}`,
+        body: "Revisá el contacto y resolvé el conflicto.",
+        link: singleConflict ? `/contacts/${conflictOuts[0]!.contactId}` : "/contacts?status=conflict",
       });
     }
   }
@@ -153,7 +165,7 @@ async function processSingleEvent(
   client: Awaited<ReturnType<typeof getHubSpotClient>>,
   event: HubSpotWebhookEvent,
   portalProps: import("@/lib/hubspot/properties").PortalProperties | null
-): Promise<"updated" | "conflict" | "archived" | "skipped"> {
+): Promise<{ status: "updated" | "conflict" | "archived" | "skipped"; contactId?: string; contactName?: string }> {
   const hubspotId = String(event.objectId);
 
   if (
@@ -161,7 +173,7 @@ async function processSingleEvent(
     event.subscriptionType === "contact.deletion"
   ) {
     await archiveContact(admin, orgId, hubspotId);
-    return "archived";
+    return { status: "archived" };
   }
 
   if (
@@ -174,11 +186,12 @@ async function processSingleEvent(
     if (!contact) {
       console.warn(`[hubspot webhook] contact ${hubspotId} missing on HubSpot, archiving`);
       await archiveContact(admin, orgId, hubspotId);
-      return "archived";
+      return { status: "archived" };
     }
 
     const normalized = normalizeHubSpotContact(contact);
     const text = buildContactText(normalized, portalProps?.labels);
+    const contactName = [normalized.firstName, normalized.lastName].filter(Boolean).join(" ") || normalized.email || undefined;
 
     const result = await upsertContactFromHubSpot(admin, orgId, contact, { embedding: null });
 
@@ -193,12 +206,14 @@ async function processSingleEvent(
       }
     });
 
-    return result.type === "conflict" ? "conflict"
-      : result.type === "skipped"    ? "skipped"
-      : "updated";
+    const contactId = result.type !== "skipped" ? (result as { contactId?: string }).contactId : undefined;
+
+    return result.type === "conflict" ? { status: "conflict", contactId, contactName }
+      : result.type === "skipped"    ? { status: "skipped" }
+      : { status: "updated", contactId, contactName };
   }
 
-  return "skipped";
+  return { status: "skipped" };
 }
 
 function reconstructFullUri(request: NextRequest): string {
