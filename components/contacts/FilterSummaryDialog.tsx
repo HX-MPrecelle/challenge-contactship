@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Loader2, Sparkles } from "lucide-react";
+import { MarkdownText } from "@/components/ui/MarkdownText";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,8 +107,8 @@ export function FilterSummaryDialog({
                 )}
               </div>
             )}
-            <div className="max-h-[400px] overflow-y-auto whitespace-pre-wrap rounded-lg border border-border-default bg-bg-surface px-4 py-3 text-sm leading-relaxed text-text-primary">
-              {summary}
+            <div className="max-h-[400px] overflow-y-auto rounded-lg border border-border-default bg-bg-surface px-4 py-3">
+              <MarkdownText text={summary} className="text-text-primary" />
             </div>
           </div>
         ) : null}

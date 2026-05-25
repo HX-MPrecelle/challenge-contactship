@@ -24,6 +24,8 @@ const VALID_LIFECYCLES = [
 
 type SyncStatus = (typeof VALID_STATUSES)[number];
 
+import type { AiFilterClause } from "@/lib/utils/contact-filters";
+
 type Props = {
   searchParams: Promise<{
     page?: string;
@@ -31,6 +33,8 @@ type Props = {
     status?: string;
     lifecycle?: string;
     q?: string;
+    aifilters?: string;   // JSON-encoded AI filter clauses
+    aiexplain?: string;   // human-readable explanation for the banner
   }>;
 };
 
@@ -44,6 +48,16 @@ export default async function ContactsPage({ searchParams }: Props) {
   const lifecycle = (VALID_LIFECYCLES as readonly string[]).includes(params.lifecycle ?? "")
     ? params.lifecycle! : null;
   const q = (params.q ?? "").trim().slice(0, 200);
+
+  // AI-parsed structured filters — applied server-side so pagination works correctly
+  let aiFilters: AiFilterClause[] = [];
+  const aiExplain = (params.aiexplain ?? "").slice(0, 300);
+  if (params.aifilters) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(params.aifilters));
+      if (Array.isArray(parsed)) aiFilters = parsed as AiFilterClause[];
+    } catch { /* malformed param — ignore */ }
+  }
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -73,6 +87,19 @@ export default async function ContactsPage({ searchParams }: Props) {
 
   if (status)    baseQuery = baseQuery.eq("sync_status", status);
   if (lifecycle) baseQuery = baseQuery.eq("lifecycle_stage", lifecycle);
+
+  // Apply AI-parsed filters server-side (same PostgREST dynamic filter the
+  // summarize action uses). Each clause is field + operator + value.
+  const ALLOWED_AI_FIELDS = new Set([
+    "first_name","last_name","email","company","job_title",
+    "lifecycle_stage","lead_status","country","city",
+    "local_updated_at","created_at",
+  ]);
+  for (const f of aiFilters) {
+    if (!ALLOWED_AI_FIELDS.has(f.field)) continue; // whitelist
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    baseQuery = (baseQuery as any).filter(f.field, f.operator, f.value);
+  }
 
   if (q) {
     // ilike across name + email + company — PostgREST OR filter
@@ -122,6 +149,8 @@ export default async function ContactsPage({ searchParams }: Props) {
         statusFilter={status}
         lifecycleFilter={lifecycle}
         searchQuery={q}
+        serverAiFilters={aiFilters}
+        serverAiExplain={aiExplain}
         density={density}
       />
     </main>
