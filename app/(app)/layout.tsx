@@ -29,14 +29,16 @@ export default async function AppLayout({
       <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground md:flex-row">
         {showSidebar && (
           <>
-            {/* Desktop sidebar — always visible on md+ */}
+            {/* Desktop sidebar */}
             <Suspense fallback={<div className="hidden md:block w-[220px] shrink-0 border-r border-border-default bg-bg-surface" />}>
               <div className="hidden md:flex w-[220px] shrink-0">
                 <Sidebar userEmail={user.email ?? ""} locale={locale} orgId={orgId} />
               </div>
             </Suspense>
 
-            {/* Mobile top bar + drawer */}
+            {/* Mobile top bar + drawer — each Sidebar instance gets its own
+                NotificationBell with a unique useId() channel name, so there
+                is no Supabase Realtime channel conflict */}
             <MobileNav userEmail={user.email ?? ""} locale={locale} orgId={orgId} />
           </>
         )}

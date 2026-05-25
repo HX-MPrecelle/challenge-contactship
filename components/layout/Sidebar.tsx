@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/(app)/actions";
 import { createT, type Locale } from "@/lib/i18n/index";
-
 import { NotificationBell } from "@/components/layout/NotificationBell";
 
 type Props = {

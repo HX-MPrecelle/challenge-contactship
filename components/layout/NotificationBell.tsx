@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -44,6 +44,7 @@ function relativeTime(iso: string): string {
 }
 
 export function NotificationBell({ orgId }: { orgId: string }) {
+  const instanceId = useId().replace(/:/g, "");
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export function NotificationBell({ orgId }: { orgId: string }) {
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
-      .channel(`notifications-${orgId}`)
+      .channel(`notifications-${orgId}-${instanceId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `org_id=eq.${orgId}` },
