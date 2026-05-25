@@ -19,6 +19,7 @@ import {
 } from "@/lib/i18n/index";
 import { DashboardPriorities } from "@/components/dashboard/DashboardPriorities";
 import { DashboardAgentWidget } from "@/components/dashboard/DashboardAgentWidget";
+import { ConversionFunnel } from "@/components/dashboard/ConversionFunnel";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +166,11 @@ export default async function DashboardPage() {
           label: r.key ?? (locale === "es" ? "Sin país" : "No country"),
           count: r.count,
         }))}
+        total={total ?? 0}
+      />
+
+      <ConversionFunnel
+        stageCounts={Object.fromEntries(stageCounts.map(s => [s.key, s.count]))}
         total={total ?? 0}
       />
 
