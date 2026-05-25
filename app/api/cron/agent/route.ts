@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
 
   for (const conn of connections ?? []) {
     try {
-      const result = await runFollowUpAgent(admin, conn.org_id);
+      // thresholdDays=0 → analyze all contacts regardless of last activity date.
+      // Use AGENT_THRESHOLD_DAYS env var to override (default 0 for demos).
+      const threshold = parseInt(process.env.AGENT_THRESHOLD_DAYS ?? "0", 10);
+      const result = await runFollowUpAgent(admin, conn.org_id, "es", threshold);
       report.push({ orgId: conn.org_id, ...result });
     } catch (err) {
       report.push({
