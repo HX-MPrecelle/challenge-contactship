@@ -152,6 +152,11 @@ export function ContactList({
       }
       setAiFilter({ filters: result.data.filters, explanation: result.data.explanation, query: q });
       setLocalQuery("");
+      // Clear ?q= from URL: the text search runs server-side, but AI filters
+      // apply client-side on loaded contacts. If q is still in the URL the server
+      // would return 0 rows (no contact's name matches the NL query), so the AI
+      // filter would have nothing to work with.
+      navigate({ q: null, page: null });
     });
   }
 

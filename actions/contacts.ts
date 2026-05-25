@@ -664,12 +664,15 @@ export async function checkConflictBeforeSave(
       hubspot: hsVal,
       localChanged,
       hubspotChanged,
-      isConflict: localChanged && hubspotChanged,
+      // True conflict only when BOTH sides changed AND they disagree.
+      // If both changed to the same value they converged — not a conflict.
+      isConflict: localChanged && hubspotChanged && (userVal ?? "") !== (hsVal ?? ""),
     };
 
     if (item.isConflict) trueConflicts.push(item);
-    else if (hubspotChanged) hubspotOnly.push(item);
-    else userOnly.push(item);
+    else if (hubspotChanged && !localChanged) hubspotOnly.push(item); // only HS changed
+    else if (localChanged && !hubspotChanged) userOnly.push(item);   // only local changed
+    // else: both changed to same value (convergence) — nothing to show
   }
 
   return {
