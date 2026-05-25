@@ -125,27 +125,43 @@ async function processEvents(events: HubSpotWebhookEvent[]): Promise<void> {
     const conflictOuts = outcomes.filter(o => o.status === "conflict");
     const archivedOuts = outcomes.filter(o => o.status === "archived");
 
+    // Detect source: "CRM_UI" = user changed in HubSpot directly.
+    // "INTEGRATION" / "API" = our own app triggered the change (e.g. user saved
+    // in ContactShip → we pushed to HubSpot → HubSpot echoes back the webhook).
+    const changeSources = new Set(portalEvents.map(e => e.changeSource ?? "UNKNOWN"));
+    const fromOurApp = [...changeSources].every(s => s === "INTEGRATION" || s === "API");
+
     if (updatedOuts.length > 0 || archivedOuts.length > 0) {
       const parts: string[] = [];
       if (updatedOuts.length)  parts.push(`${updatedOuts.length} actualizado${updatedOuts.length === 1 ? "" : "s"}`);
       if (archivedOuts.length) parts.push(`${archivedOuts.length} archivado${archivedOuts.length === 1 ? "" : "s"}`);
 
-      // If single contact updated → link directly to its detail page
       const singleUpdate = updatedOuts.length === 1 && archivedOuts.length === 0 && updatedOuts[0]?.contactId;
-      const link = singleUpdate
-        ? `/contacts/${updatedOuts[0]!.contactId}`
-        : "/contacts";
+      const link = singleUpdate ? `/contacts/${updatedOuts[0]!.contactId}` : "/contacts";
 
-      const title = singleUpdate && updatedOuts[0]?.contactName
-        ? `${updatedOuts[0].contactName} fue actualizado desde HubSpot`
-        : `HubSpot — ${parts.join(", ")}`;
-
-      await createNotification(admin, orgId, {
-        type: "hubspot_update",
-        title,
-        body: singleUpdate ? "Click para ver el contacto actualizado." : `${parts.join(" y ")} desde tu portal de HubSpot.`,
-        link,
-      });
+      if (fromOurApp) {
+        // Change originated in ContactShip → confirm the HubSpot sync completed
+        const title = singleUpdate && updatedOuts[0]?.contactName
+          ? `${updatedOuts[0].contactName} guardado y sincronizado en HubSpot ✓`
+          : `${parts.join(" y ")} sincronizado${updatedOuts.length === 1 ? "" : "s"} en HubSpot ✓`;
+        await createNotification(admin, orgId, {
+          type: "hubspot_update",
+          title,
+          body: "Los cambios que hiciste en ContactShip se reflejaron correctamente en HubSpot.",
+          link,
+        });
+      } else {
+        // Change originated in HubSpot → someone edited there directly
+        const title = singleUpdate && updatedOuts[0]?.contactName
+          ? `${updatedOuts[0].contactName} fue actualizado desde HubSpot`
+          : `HubSpot — ${parts.join(", ")}`;
+        await createNotification(admin, orgId, {
+          type: "hubspot_update",
+          title,
+          body: singleUpdate ? "Click para ver los cambios." : `${parts.join(" y ")} desde tu portal de HubSpot.`,
+          link,
+        });
+      }
     }
     if (conflictOuts.length > 0) {
       const singleConflict = conflictOuts.length === 1 && conflictOuts[0]?.contactId;

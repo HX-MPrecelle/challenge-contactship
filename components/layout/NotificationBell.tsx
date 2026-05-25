@@ -111,14 +111,8 @@ export function NotificationBell({ orgId }: { orgId: string }) {
         <div className="absolute bottom-full left-0 mb-1.5 w-[340px] overflow-hidden rounded-2xl border border-border-strong bg-bg-surface shadow-2xl z-50">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
-            <div className="flex items-center gap-2">
-              <Bell size={14} className="text-text-muted" />
-              <span className="text-sm font-semibold text-text-primary">Notificaciones</span>
-              {unread > 0 && (
-                <span className="rounded-full bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold text-brand">{unread} nueva{unread > 1 ? "s" : ""}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-text-primary">Notificaciones</span>
+            <div className="flex items-center gap-1">
               {unread > 0 && (
                 <button type="button" onClick={handleMarkAll}
                   className="rounded-md px-2 py-1 text-[10px] font-medium text-text-muted hover:bg-bg-subtle hover:text-text-primary transition-colors">
