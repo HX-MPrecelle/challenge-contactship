@@ -76,6 +76,8 @@ BAD_TIMING             → mal timing, volver más adelante
 - Sé conservador: preferí menos filtros bien formados antes que muchos dudosos.
 - Si la búsqueda implica ORDENAMIENTO (más antiguos, mayor score, más recientes por algo) y no hay forma de convertirlo en un filtro razonable, devolvé un array vacío.
 - Si la búsqueda no tiene sentido o no podés traducirla, devolvé un array vacío.
+- Campos que NO existen como columnas filtrables (están en JSONB interno, no uses estos):
+  numemployees, annualrevenue, industry, hs_buying_role, message, website → devolvé [] para estas búsquedas.
 
 ═══ EJEMPLOS ═══
 "cerca del cierre"               → lifecycle_stage eq opportunity

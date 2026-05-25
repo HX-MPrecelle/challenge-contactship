@@ -143,6 +143,14 @@ export function ContactList({
   function runAiSearch() {
     const q = localQuery.trim();
     if (!q) { toast.error(t("contacts.ai.error.empty")); return; }
+
+    // Clear ?q= IMMEDIATELY before the async call.
+    // The debounce may have set ?q= in the URL which causes the server to
+    // filter by ilike (returns 0 rows for natural language). We need the server
+    // to load all contacts so the AI filter can apply client-side on them.
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    navigate({ q: null, page: null });
+
     startParsing(async () => {
       const result = await naturalLanguageSearch({ query: q });
       if (!result.success) { toast.error(result.error); return; }
@@ -152,11 +160,6 @@ export function ContactList({
       }
       setAiFilter({ filters: result.data.filters, explanation: result.data.explanation, query: q });
       setLocalQuery("");
-      // Clear ?q= from URL: the text search runs server-side, but AI filters
-      // apply client-side on loaded contacts. If q is still in the URL the server
-      // would return 0 rows (no contact's name matches the NL query), so the AI
-      // filter would have nothing to work with.
-      navigate({ q: null, page: null });
     });
   }
 
