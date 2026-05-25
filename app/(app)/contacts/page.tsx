@@ -15,7 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 const VALID_STATUSES = ["synced", "pending", "conflict", "error"] as const;
 const VALID_LIFECYCLES = [
   "subscriber","lead","marketingqualifiedlead","salesqualifiedlead",
@@ -27,6 +27,7 @@ type SyncStatus = (typeof VALID_STATUSES)[number];
 type Props = {
   searchParams: Promise<{
     page?: string;
+    size?: string;
     status?: string;
     lifecycle?: string;
     q?: string;
@@ -36,6 +37,7 @@ type Props = {
 export default async function ContactsPage({ searchParams }: Props) {
   const params = await searchParams;
 
+  const pageSize = Math.min(50, Math.max(5, parseInt(params.size ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE));
   const page     = Math.max(0, parseInt(params.page ?? "0", 10) || 0);
   const status   = (VALID_STATUSES as readonly string[]).includes(params.status ?? "")
     ? (params.status as SyncStatus) : null;
@@ -79,8 +81,8 @@ export default async function ContactsPage({ searchParams }: Props) {
     );
   }
 
-  const from = page * PAGE_SIZE;
-  const to   = from + PAGE_SIZE - 1;
+  const from = page * pageSize;
+  const to   = from + pageSize - 1;
 
   const { data: contacts, count, error } = await baseQuery
     .order("local_updated_at", { ascending: false })
@@ -116,6 +118,7 @@ export default async function ContactsPage({ searchParams }: Props) {
         orgId={orgId}
         totalCount={totalCount}
         page={page}
+        pageSize={pageSize}
         statusFilter={status}
         lifecycleFilter={lifecycle}
         searchQuery={q}

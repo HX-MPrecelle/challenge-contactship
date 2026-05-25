@@ -1,14 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { AiInsightsPanel } from "@/components/contacts/AiInsightsPanel";
 import { ConflictBanner } from "@/components/contacts/ConflictBanner";
-import { ContactFormWrapper } from "@/components/contacts/ContactFormWrapper";
-import { ContactTimeline } from "@/components/contacts/ContactTimeline";
-import { ContactProperties } from "@/components/contacts/ContactProperties";
-import { ContactNotes } from "@/components/contacts/ContactNotes";
-import { SimilarContactsPanel } from "@/components/contacts/SimilarContactsPanel";
 import { SyncStatusBadge } from "@/components/contacts/SyncStatusBadge";
+import { ContactDetailTabs } from "@/components/contacts/ContactDetailTabs";
 import { createClient } from "@/lib/supabase/server";
 import { getServerT } from "@/lib/i18n/server";
 
@@ -138,52 +133,24 @@ export default async function ContactDetailPage({ params }: Props) {
         )}
       </header>
 
-      {/* Main grid: left = form + insights + similar | right = activity */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px] xl:items-start">
-        {/* Left: the main content column */}
-        <div className="flex flex-col gap-6">
-          <section className="rounded-xl border border-border-default bg-bg-surface p-6">
-            <h2 className="pb-4 text-lg font-semibold text-text-primary">
-              {t("contact.section.data")}
-            </h2>
-            <ContactFormWrapper
-              contactId={contact.id}
-              orgId={orgId}
-              formKey={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title, (contact.properties as Record<string,string|null>|null)?.message].join("|")}
-              initial={{
-                firstName: contact.first_name,
-                lastName:  contact.last_name,
-                email:     contact.email,
-                phone:     contact.phone,
-                company:   contact.company,
-                jobTitle:  contact.job_title,
-                message:   (contact.properties as Record<string, string | null> | null)?.message ?? null,
-              }}
-            />
-          </section>
-
-          <ContactProperties properties={contact.properties as Record<string, string | null> | null} />
-          <AiInsightsPanel contactId={contact.id} />
-          <SimilarContactsPanel contactId={contact.id} />
-          <ContactNotes contactId={contact.id} userEmail={user.email} />
-        </div>
-
-        {/* Right: activity timeline — shorter when empty, doesn't inflate left */}
-        <aside className="flex flex-col gap-6">
-          <section className="rounded-xl border border-border-default bg-bg-surface p-6">
-            <header className="flex items-baseline justify-between pb-4">
-              <h2 className="text-base font-semibold text-text-primary">{t("contact.section.activity")}</h2>
-              <span className="font-mono text-[10px] text-text-muted" suppressHydrationWarning>
-                {new Date(contact.local_updated_at).toLocaleString("es-AR", {
-                  dateStyle: "short",
-                  timeStyle: "short",
-                })}
-              </span>
-            </header>
-            <ContactTimeline events={events ?? []} />
-          </section>
-        </aside>
-      </div>
+      <ContactDetailTabs
+        contactId={contact.id}
+        orgId={orgId}
+        formKey={[contact.first_name, contact.last_name, contact.email, contact.phone, contact.company, contact.job_title, (contact.properties as Record<string,string|null>|null)?.message].join("|")}
+        initial={{
+          firstName: contact.first_name,
+          lastName:  contact.last_name,
+          email:     contact.email,
+          phone:     contact.phone,
+          company:   contact.company,
+          jobTitle:  contact.job_title,
+          message:   (contact.properties as Record<string, string | null> | null)?.message ?? null,
+        }}
+        properties={contact.properties as Record<string, string | null> | null}
+        events={events ?? []}
+        userEmail={user.email}
+        lastUpdatedAt={contact.local_updated_at}
+      />
     </main>
   );
 }

@@ -36,6 +36,7 @@ type Props = {
   orgId: string;
   totalCount: number;
   page: number;
+  pageSize?: number;
   statusFilter: SyncStatus | null;
   lifecycleFilter: string | null;
   searchQuery: string;
@@ -51,13 +52,14 @@ const LIFECYCLE_FILTER_VALUES = [
   { value: "subscriber",            label: "Subscriber" },
 ] as const;
 
-const PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 15;
 
 export function ContactList({
   contacts: initialContacts,
   orgId,
   totalCount,
   page,
+  pageSize: serverPageSize = DEFAULT_PAGE_SIZE,
   statusFilter,
   lifecycleFilter,
   searchQuery,
@@ -74,6 +76,28 @@ export function ContactList({
     { value: "conflict", label: t("contacts.filter.status.conflict"), dot: "bg-error animate-pulse-dot" },
     { value: "error",    label: t("contacts.filter.status.error"),    dot: "bg-error" },
   ];
+
+  // Dynamic page size: calculate how many rows fit in the viewport
+  const tableRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function calc() {
+      const top = tableRef.current?.getBoundingClientRect().top ?? 240;
+      const rowH = density === "compact" ? 40 : 52;
+      const paginationH = 52;
+      const available = window.innerHeight - top - paginationH - 16;
+      const rows = Math.max(5, Math.min(50, Math.floor(available / rowH)));
+      if (rows !== serverPageSize) {
+        const p = new URLSearchParams(searchParams.toString());
+        p.set("size", String(rows));
+        p.delete("page");
+        router.replace(`/contacts?${p.toString()}`, { scroll: false });
+      }
+    }
+    // Only recalculate on resize, not on mount (serverPageSize already set)
+    const handler = () => calc();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [density, serverPageSize, searchParams, router]);
 
   // Local state only for realtime updates and AI filter overlay
   const [contacts, setContacts] = useState<ContactRow[]>(initialContacts);
@@ -132,7 +156,7 @@ export function ContactList({
   }
 
   // ── Pagination ────────────────────────────────────────────────────────────
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / serverPageSize));
 
   function goToPage(p: number) {
     router.push(buildUrl({ page: p === 0 ? null : String(p) }), { scroll: false });
@@ -338,7 +362,7 @@ export function ContactList({
       )}
 
       {/* Table — horizontal scroll on mobile */}
-      <div className="overflow-x-auto rounded-xl border border-border-default bg-bg-surface">
+      <div ref={tableRef} className="overflow-x-auto rounded-xl border border-border-default bg-bg-surface">
         <table className="w-full min-w-[520px] text-sm">
           <thead className="border-b border-border-default bg-bg-subtle">
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
