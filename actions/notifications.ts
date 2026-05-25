@@ -57,3 +57,21 @@ export async function markAllRead(): Promise<void> {
   if (!orgId) return;
   await supabase.from("notifications").update({ read: true }).eq("org_id", orgId).eq("read", false);
 }
+
+export async function deleteNotification(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const orgId = user.app_metadata?.org_id as string | undefined;
+  if (!orgId) return;
+  await supabase.from("notifications").delete().eq("id", id).eq("org_id", orgId);
+}
+
+export async function clearAllRead(): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const orgId = user.app_metadata?.org_id as string | undefined;
+  if (!orgId) return;
+  await supabase.from("notifications").delete().eq("org_id", orgId).eq("read", true);
+}
