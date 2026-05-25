@@ -235,6 +235,30 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          id: string
+          org_id: string
+          type: "agent_run" | "conflict" | "hubspot_update" | "sync_error"
+          title: string
+          body: string | null
+          link: string | null
+          read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          type: "agent_run" | "conflict" | "hubspot_update" | "sync_error"
+          title: string
+          body?: string | null
+          link?: string | null
+          read?: boolean
+          created_at?: string
+        }
+        Update: { read?: boolean }
+        Relationships: []
+      }
       contact_notes: {
         Row: {
           id: string

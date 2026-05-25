@@ -16,12 +16,15 @@ import {
 import { signOut } from "@/app/(app)/actions";
 import { createT, type Locale } from "@/lib/i18n/index";
 
+import { NotificationBell } from "@/components/layout/NotificationBell";
+
 type Props = {
   userEmail: string;
   locale: Locale;
+  orgId?: string;
 };
 
-export function Sidebar({ userEmail, locale }: Props) {
+export function Sidebar({ userEmail, locale, orgId }: Props) {
   const t = createT(locale);
   const pathname = usePathname();
   const onSettings = pathname.startsWith("/settings");
@@ -82,6 +85,7 @@ export function Sidebar({ userEmail, locale }: Props) {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border-default pt-3">
+        {orgId && <NotificationBell orgId={orgId} />}
         <div className="px-2 pb-1 text-xs text-text-muted">{userEmail}</div>
         <form action={signOut}>
           <button

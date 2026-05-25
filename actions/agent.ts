@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { runFollowUpAgent } from "@/lib/ai/agent";
+import { createNotification } from "@/lib/notifications";
 import type { Database } from "@/types/database";
 
 type ActionResult<T = void> =
@@ -46,6 +47,16 @@ export async function runAgentAction(
       parsed.data.thresholdDays,
       preferences
     );
+
+    if (result.actionsGenerated > 0) {
+      await createNotification(admin, orgId, {
+        type: "agent_run",
+        title: `Agente IA — ${result.actionsGenerated} acción${result.actionsGenerated === 1 ? "" : "es"} nueva${result.actionsGenerated === 1 ? "" : "s"}`,
+        body: "El agente detectó contactos en riesgo y generó recomendaciones.",
+        link: "/agent",
+      });
+    }
+
     revalidatePath("/agent");
     return { success: true, data: { actionsGenerated: result.actionsGenerated } };
   } catch (err) {

@@ -15,6 +15,7 @@ import {
   verifyWebhookSignature,
   type HubSpotWebhookEvent,
 } from "@/lib/hubspot/webhooks";
+import { createNotification } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -108,15 +109,40 @@ async function processEvents(events: HubSpotWebhookEvent[]): Promise<void> {
     // Fetch all property definitions once per portal batch
     const portalProps = await getPortalContactProperties(client).catch(() => null);
 
+    const outcomes: Array<"updated" | "conflict" | "archived" | "skipped"> = [];
+
     for (const event of portalEvents) {
       try {
-        await processSingleEvent(admin, orgId, client, event, portalProps);
+        const outcome = await processSingleEvent(admin, orgId, client, event, portalProps);
+        outcomes.push(outcome);
       } catch (err) {
-        console.error(
-          `[hubspot webhook] event ${event.eventId} failed`,
-          err
-        );
+        console.error(`[hubspot webhook] event ${event.eventId} failed`, err);
       }
+    }
+
+    // Create summary notifications for this batch
+    const updated  = outcomes.filter(o => o === "updated").length;
+    const conflicts = outcomes.filter(o => o === "conflict").length;
+    const archived  = outcomes.filter(o => o === "archived").length;
+
+    if (updated > 0 || archived > 0) {
+      const parts: string[] = [];
+      if (updated)  parts.push(`${updated} actualizado${updated === 1 ? "" : "s"}`);
+      if (archived) parts.push(`${archived} archivado${archived === 1 ? "" : "s"}`);
+      await createNotification(admin, orgId, {
+        type: "hubspot_update",
+        title: `HubSpot — ${parts.join(", ")}`,
+        body: `${parts.join(" y ")} desde tu portal de HubSpot.`,
+        link: "/contacts",
+      });
+    }
+    if (conflicts > 0) {
+      await createNotification(admin, orgId, {
+        type: "conflict",
+        title: `${conflicts} conflicto${conflicts === 1 ? "" : "s"} de sync detectado${conflicts === 1 ? "" : "s"}`,
+        body: "Revisá los contactos con conflicto y resolvelos.",
+        link: "/contacts?status=conflict",
+      });
     }
   }
 }
@@ -127,7 +153,7 @@ async function processSingleEvent(
   client: Awaited<ReturnType<typeof getHubSpotClient>>,
   event: HubSpotWebhookEvent,
   portalProps: import("@/lib/hubspot/properties").PortalProperties | null
-): Promise<void> {
+): Promise<"updated" | "conflict" | "archived" | "skipped"> {
   const hubspotId = String(event.objectId);
 
   if (
@@ -135,7 +161,7 @@ async function processSingleEvent(
     event.subscriptionType === "contact.deletion"
   ) {
     await archiveContact(admin, orgId, hubspotId);
-    return;
+    return "archived";
   }
 
   if (
@@ -146,22 +172,16 @@ async function processSingleEvent(
   ) {
     const contact = await getContact(client, hubspotId, portalProps?.names);
     if (!contact) {
-      console.warn(
-        `[hubspot webhook] contact ${hubspotId} missing on HubSpot, archiving`
-      );
+      console.warn(`[hubspot webhook] contact ${hubspotId} missing on HubSpot, archiving`);
       await archiveContact(admin, orgId, hubspotId);
-      return;
+      return "archived";
     }
 
     const normalized = normalizeHubSpotContact(contact);
     const text = buildContactText(normalized, portalProps?.labels);
 
-    // Upsert immediately so the local mirror is up to date.
-    const result = await upsertContactFromHubSpot(admin, orgId, contact, {
-      embedding: null,
-    });
+    const result = await upsertContactFromHubSpot(admin, orgId, contact, { embedding: null });
 
-    // Regenerate embedding after responding — keeps webhook processing fast.
     after(async () => {
       const embeddings = await embedContacts([{ key: hubspotId, text }]);
       if (embeddings?.[0]) {
@@ -173,9 +193,12 @@ async function processSingleEvent(
       }
     });
 
-    void result;
-    return;
+    return result.type === "conflict" ? "conflict"
+      : result.type === "skipped"    ? "skipped"
+      : "updated";
   }
+
+  return "skipped";
 }
 
 function reconstructFullUri(request: NextRequest): string {
