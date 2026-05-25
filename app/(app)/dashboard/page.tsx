@@ -73,7 +73,7 @@ export default async function DashboardPage() {
   const syncPct = total ? Math.round(((synced ?? 0) / total) * 100) : 0;
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 py-6 sm:py-8">
       <header className="pb-6">
         <p className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
           {new Date().toLocaleDateString(locale === "es" ? "es-AR" : "en-US", {
@@ -172,7 +172,7 @@ export default async function DashboardPage() {
 
       <DashboardPriorities />
 
-      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         <QuickLink
           icon={<Sparkles size={14} />}
           title={t("dashboard.quicklink.insights")}

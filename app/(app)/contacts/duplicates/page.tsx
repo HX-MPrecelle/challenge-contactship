@@ -33,7 +33,7 @@ export default async function DuplicatesPage() {
   const groups = result.success ? result.data.groups : [];
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
       <BackButton />
       <header className="flex items-center gap-3 pb-6">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-subtle text-warning">

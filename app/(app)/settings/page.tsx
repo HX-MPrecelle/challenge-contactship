@@ -40,7 +40,7 @@ export default async function SettingsPage() {
     ]);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-8">
       <BackButton />
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-text-primary">{t("settings.title")}</h1>

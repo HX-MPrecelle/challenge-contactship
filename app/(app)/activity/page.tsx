@@ -72,7 +72,7 @@ export default async function ActivityPage({ searchParams }: Props) {
   ];
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
+    <main className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8">
       <BackButton />
       <header className="pb-6">
         <h1 className="text-2xl font-semibold text-text-primary">{t("activity.title")}</h1>

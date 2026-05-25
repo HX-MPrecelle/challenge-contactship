@@ -60,7 +60,7 @@ export default async function ContactDetailPage({ params }: Props) {
     t("misc.noName");
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
+    <main className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
       {/* Back navigation */}
       <Link
         href="/contacts"
@@ -139,7 +139,7 @@ export default async function ContactDetailPage({ params }: Props) {
       </header>
 
       {/* Main grid: left = form + insights + similar | right = activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px] lg:items-start">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px] xl:items-start">
         {/* Left: the main content column */}
         <div className="flex flex-col gap-6">
           <section className="rounded-xl border border-border-default bg-bg-surface p-6">
