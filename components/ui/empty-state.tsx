@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 type Action = {
   label: string;
@@ -35,23 +38,15 @@ export function EmptyState({
       {(primaryAction || secondaryAction) && (
         <div className="flex items-center gap-2">
           {primaryAction && (
-            <button
-              type="button"
-              onClick={primaryAction.onClick}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-hover"
-            >
+            <Button size="sm" onClick={primaryAction.onClick}>
               {primaryAction.icon}
               {primaryAction.label}
-            </button>
+            </Button>
           )}
           {secondaryAction && (
-            <button
-              type="button"
-              onClick={secondaryAction.onClick}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3.5 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle hover:text-text-primary"
-            >
+            <Button size="sm" variant="outline" onClick={secondaryAction.onClick}>
               {secondaryAction.label}
-            </button>
+            </Button>
           )}
         </div>
       )}
