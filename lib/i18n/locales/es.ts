@@ -545,6 +545,7 @@ export const es = {
   "duplicates.empty": "No se detectaron duplicados.",
   "duplicates.scanning": "Analizando…",
   "duplicates.link": "Ver posibles duplicados ({n})",
+  "duplicates.reviewLink": "Revisar duplicados",
 };
 
 export type TranslationKey = keyof typeof es;

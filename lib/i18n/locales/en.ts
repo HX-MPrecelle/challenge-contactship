@@ -547,4 +547,5 @@ export const en: Record<TranslationKey, string> = {
   "duplicates.empty": "No duplicates detected.",
   "duplicates.scanning": "Analyzing…",
   "duplicates.link": "View possible duplicates ({n})",
+  "duplicates.reviewLink": "Review duplicates",
 };

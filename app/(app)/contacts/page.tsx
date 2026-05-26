@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { Users } from "lucide-react";
+import Link from "next/link";
+import { Copy, Users } from "lucide-react";
 import { ContactList } from "@/components/contacts/ContactList";
 import { createClient } from "@/lib/supabase/server";
 import { HubSpotSyncButton } from "./HubSpotSyncButton";
@@ -137,7 +138,16 @@ export default async function ContactsPage({ searchParams }: Props) {
             </p>
           </div>
         </div>
-        <HubSpotSyncButton />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/contacts/duplicates"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-surface px-3 py-1.5 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-subtle"
+          >
+            <Copy size={13} />
+            {t("duplicates.reviewLink")}
+          </Link>
+          <HubSpotSyncButton />
+        </div>
       </header>
 
       <ContactList

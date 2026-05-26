@@ -4,7 +4,7 @@ import type { Database } from "@/types/database";
 
 type AdminClient = SupabaseClient<Database>;
 
-export type NotificationType = "agent_run" | "conflict" | "hubspot_update" | "sync_error";
+export type NotificationType = "agent_run" | "conflict" | "duplicate" | "hubspot_update" | "sync_error";
 
 export async function createNotification(
   admin: AdminClient,

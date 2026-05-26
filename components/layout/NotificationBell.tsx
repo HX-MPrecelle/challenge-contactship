@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { AlertTriangle, Bell, Bot, RefreshCw, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, Bell, Bot, Copy, RefreshCw, Trash2, X, Zap } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotifications,
@@ -14,10 +14,11 @@ import {
 } from "@/actions/notifications";
 
 const TYPE_META: Record<string, { icon: React.ReactNode; color: string; dot: string }> = {
-  agent_run:      { icon: <Bot size={13} />,           color: "bg-brand-subtle text-brand",       dot: "bg-brand" },
-  conflict:       { icon: <AlertTriangle size={13} />, color: "bg-error-subtle text-error",        dot: "bg-error" },
-  hubspot_update: { icon: <RefreshCw size={13} />,     color: "bg-success-subtle text-success",   dot: "bg-success" },
-  sync_error:     { icon: <Zap size={13} />,           color: "bg-warning-subtle text-warning",   dot: "bg-warning" },
+  agent_run:      { icon: <Bot size={13} />,           color: "bg-brand-subtle text-brand",      dot: "bg-brand" },
+  conflict:       { icon: <AlertTriangle size={13} />, color: "bg-error-subtle text-error",       dot: "bg-error" },
+  duplicate:      { icon: <Copy size={13} />,          color: "bg-warning-subtle text-warning",  dot: "bg-warning" },
+  hubspot_update: { icon: <RefreshCw size={13} />,     color: "bg-success-subtle text-success",  dot: "bg-success" },
+  sync_error:     { icon: <Zap size={13} />,           color: "bg-warning-subtle text-warning",  dot: "bg-warning" },
 };
 
 function relativeTime(iso: string): string {
