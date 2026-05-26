@@ -7,8 +7,8 @@ import { getHubSpotClient } from "@/lib/hubspot/client";
 import { getContact, updateContact as updateHubSpotContact } from "@/lib/hubspot/contacts";
 import {
   buildContactText,
+  calculateSyncHash,
   normalizeHubSpotContact,
-  upsertContactFromHubSpot,
 } from "@/lib/hubspot/sync";
 import { embedContacts } from "@/lib/ai/embeddings";
 import { HubSpotAuthError, HubSpotRateLimitError } from "@/lib/errors";
@@ -84,11 +84,32 @@ export async function updateContact(
     const portalProps = await getPortalContactProperties(client).catch(() => null);
     const text = buildContactText(normalized, portalProps?.labels);
 
-    // Upsert immediately without embedding so the UI reflects the new data now.
-    await upsertContactFromHubSpot(admin, orgId, fresh, {
-      embedding: null,
-      direction: "local_to_hubspot",
-    });
+    // Direct write — bypass upsertContactFromHubSpot's 3-way conflict check.
+    // The user explicitly saved these values and HubSpot accepted them; running
+    // conflict detection against a stale base_state would re-flag a spurious
+    // conflict and leave the local fields unmodified.
+    const newBase = {
+      first_name: normalized.firstName,
+      last_name:  normalized.lastName,
+      email:      normalized.email,
+      phone:      normalized.phone,
+      company:    normalized.company,
+      job_title:  normalized.jobTitle,
+    };
+    await admin.from("contacts").update({
+      ...newBase,
+      lifecycle_stage:    normalized.lifecycleStage,
+      lead_status:        normalized.leadStatus,
+      website:            normalized.website,
+      city:               normalized.city,
+      country:            normalized.country,
+      properties:         normalized.properties,
+      base_state:         newBase,
+      sync_status:        "synced",
+      sync_hash:          calculateSyncHash(normalized.properties),
+      hubspot_updated_at: normalized.hubspotUpdatedAt,
+      local_updated_at:   new Date().toISOString(),
+    }).eq("id", parsed.data.id);
 
     // Mark cached insights as stale so the next page visit regenerates them
     // with the contact's updated data rather than serving the 24h-old version.
@@ -368,29 +389,41 @@ export async function resolveConflictMerge(
 
     const admin = createServiceClient();
     const normalized = normalizeHubSpotContact(fresh);
-    const text = buildContactText(normalized);
-    const embeddings = await embedContacts([{ key: fresh.id, text }]);
-    await upsertContactFromHubSpot(admin, orgId, fresh, {
-      embedding: embeddings?.[0]?.embedding,
-      direction: "local_to_hubspot",
-    });
-    // Advance base_state to the resolved merged values so the next diff
-    // has the correct common ancestor.
+    const mergedBase = {
+      first_name: normalized.firstName,
+      last_name:  normalized.lastName,
+      email:      normalized.email,
+      phone:      normalized.phone,
+      company:    normalized.company,
+      job_title:  normalized.jobTitle,
+    };
+
+    // Bypass upsertContactFromHubSpot's 3-way conflict detection: the user
+    // just resolved the conflict by picking values and pushing them to HubSpot.
+    // Running conflict detection against the (now stale) base_state would
+    // immediately re-flag a new conflict and leave local fields unmodified.
     await admin.from("contacts").update({
-      base_state: {
-        first_name: normalized.firstName,
-        last_name:  normalized.lastName,
-        email:      normalized.email,
-        phone:      normalized.phone,
-        company:    normalized.company,
-        job_title:  normalized.jobTitle,
-      },
+      ...mergedBase,
+      lifecycle_stage:    normalized.lifecycleStage,
+      lead_status:        normalized.leadStatus,
+      website:            normalized.website,
+      city:               normalized.city,
+      country:            normalized.country,
+      properties:         normalized.properties,
+      base_state:         mergedBase,
+      sync_status:        "synced",
+      sync_hash:          calculateSyncHash(normalized.properties),
+      hubspot_updated_at: normalized.hubspotUpdatedAt,
+      local_updated_at:   new Date().toISOString(),
     }).eq("id", row.id);
 
-    await admin
-      .from("contacts")
-      .update({ sync_status: "synced" })
-      .eq("id", row.id);
+    const text = buildContactText(normalized);
+    const embeddings = await embedContacts([{ key: fresh.id, text }]);
+    if (embeddings?.[0]?.embedding) {
+      await admin.from("contacts").update({
+        embedding: embeddings[0].embedding as unknown as string,
+      }).eq("id", row.id);
+    }
 
     revalidatePath(`/contacts/${row.id}`);
     revalidatePath("/contacts");
@@ -465,18 +498,39 @@ export async function resolveConflict(
     }
 
     const admin = createServiceClient();
-    const text = buildContactText(normalizeHubSpotContact(fresh));
-    const embeddings = await embedContacts([{ key: fresh.id, text }]);
-    await upsertContactFromHubSpot(admin, orgId, fresh, {
-      embedding: embeddings?.[0]?.embedding,
-      direction:
-        parsed.data.resolution === "keep_local" ? "local_to_hubspot" : "hubspot_to_local",
-    });
+    const normalized = normalizeHubSpotContact(fresh);
+    const newBase = {
+      first_name: normalized.firstName,
+      last_name:  normalized.lastName,
+      email:      normalized.email,
+      phone:      normalized.phone,
+      company:    normalized.company,
+      job_title:  normalized.jobTitle,
+    };
 
-    await admin
-      .from("contacts")
-      .update({ sync_status: "synced" })
-      .eq("id", row.id);
+    // Bypass 3-way conflict detection — the user explicitly chose a side.
+    await admin.from("contacts").update({
+      ...newBase,
+      lifecycle_stage:    normalized.lifecycleStage,
+      lead_status:        normalized.leadStatus,
+      website:            normalized.website,
+      city:               normalized.city,
+      country:            normalized.country,
+      properties:         normalized.properties,
+      base_state:         newBase,
+      sync_status:        "synced",
+      sync_hash:          calculateSyncHash(normalized.properties),
+      hubspot_updated_at: normalized.hubspotUpdatedAt,
+      local_updated_at:   new Date().toISOString(),
+    }).eq("id", row.id);
+
+    const text = buildContactText(normalized);
+    const embeddings = await embedContacts([{ key: fresh.id, text }]);
+    if (embeddings?.[0]?.embedding) {
+      await admin.from("contacts").update({
+        embedding: embeddings[0].embedding as unknown as string,
+      }).eq("id", row.id);
+    }
 
     revalidatePath(`/contacts/${row.id}`);
     revalidatePath("/contacts");
