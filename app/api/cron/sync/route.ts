@@ -122,6 +122,53 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Check for duplicate contacts (best-effort: sample 1 contact)
+      try {
+        const { data: sample } = await admin
+          .from("contacts")
+          .select("id, embedding")
+          .eq("org_id", connection.org_id)
+          .eq("is_archived", false)
+          .not("embedding", "is", null)
+          .limit(1)
+          .single();
+
+        if (sample?.embedding) {
+          const { data: matches } = await admin.rpc("match_contacts", {
+            query_embedding: sample.embedding as unknown as string,
+            match_org_id: connection.org_id,
+            match_threshold: 0.88,
+            match_count: 2,
+          });
+
+          const hasDuplicates = (matches ?? []).some(
+            (m: { id: string }) => m.id !== sample.id
+          );
+
+          if (hasDuplicates) {
+            const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+            const { count: recentCount } = await admin
+              .from("notifications")
+              .select("id", { count: "exact", head: true })
+              .eq("org_id", connection.org_id)
+              .eq("type", "duplicate")
+              .eq("read", false)
+              .gte("created_at", since);
+
+            if (!recentCount || recentCount === 0) {
+              await createNotification(admin, connection.org_id, {
+                type: "duplicate",
+                title: "Se detectaron posibles duplicados",
+                body: "Revisá y mergeá los contactos duplicados para mantener tu base limpia.",
+                link: "/contacts/duplicates",
+              });
+            }
+          }
+        }
+      } catch {
+        // Non-critical — don't fail the cron if duplicate check errors
+      }
+
       report.push({ orgId: connection.org_id, processed });
     } catch (err) {
       const message =
