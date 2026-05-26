@@ -85,7 +85,21 @@ export function Sidebar({ userEmail, locale, orgId }: Props) {
 
       <div className="mt-auto flex flex-col gap-1 border-t border-border-default pt-3">
         {orgId && <NotificationBell orgId={orgId} />}
-        <div className="px-2 pb-1 text-xs text-text-muted">{userEmail}</div>
+        <Link
+          href="/profile"
+          className={[
+            "flex h-[34px] items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
+            pathname.startsWith("/profile")
+              ? "bg-bg-subtle text-text-primary"
+              : "text-text-secondary hover:bg-bg-subtle hover:text-text-primary",
+          ].join(" ")}
+          aria-label={t("nav.profile")}
+        >
+          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand/10 text-[10px] font-semibold text-brand">
+            {userEmail.charAt(0).toUpperCase()}
+          </div>
+          <span className="truncate text-xs">{userEmail}</span>
+        </Link>
         <form action={signOut}>
           <button
             type="submit"
