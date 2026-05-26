@@ -57,9 +57,10 @@ sequenceDiagram
 
 **Key invariants:**
 - `sync_hash` prevents duplicate writes when webhooks retry
-- `local_updated_at` / `hubspot_updated_at` ordering decides conflict detection
+- `base_state` is the common ancestor used for 3-way merge conflict detection; `hubspot_updated_at` ordering is a fallback when `base_state` is absent
 - `sync_status` drives the conflict inbox and the realtime badge
 - Embeddings are regenerated in background via Next.js `after()` — the sync response never waits on OpenAI
+- Conflict-resolution writes (`updateContact`, `resolveConflictMerge`, `resolveConflict`) bypass `upsertContactFromHubSpot` and do a direct `.update()` — running conflict detection against a stale `base_state` would immediately re-flag a resolved conflict
 
 ---
 
@@ -198,6 +199,7 @@ The `match_contacts` RPC returns results above a configurable cosine similarity 
 |---|---|
 | HubSpot sync + 3-way merge | `lib/hubspot/sync.ts` |
 | 3-way merge pure logic | `lib/utils/3way-merge.ts` |
+| Conflict resolution + contact mutations | `actions/contacts.ts` |
 | Embeddings | `lib/ai/embeddings.ts` |
 | RAG retrieval | `lib/ai/chat.ts` |
 | Cross-session memory | `lib/ai/memory.ts` |
