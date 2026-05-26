@@ -43,7 +43,7 @@ sequenceDiagram
     HS->>WH: POST /api/webhooks/hubspot (contact.propertyChange)
     WH->>WH: Verify HMAC signature (client secret)
     WH->>HS: GET /contacts/{id} (fetch fresh data)
-    WH->>WH: Compute sync_hash (MD5 of key fields)
+    WH->>WH: Compute sync_hash (SHA-256 of key fields)
     WH->>DB: Check existing sync_hash
     alt Hash unchanged
         WH-->>DB: skip (no-op)
@@ -168,7 +168,7 @@ The `match_contacts` RPC returns results above a configurable cosine similarity 
 | Cache storage | `org_ai_cache` table | In-memory Map doesn't survive Vercel deploys or multi-instance deployments |
 | Chat framework | Vercel AI SDK v6 (`streamText` + `createUIMessageStream`) | Tool calling + streaming in one API; SSE handled transparently |
 | Auth | Supabase SSR (`@supabase/ssr`) | Session in cookies; middleware refreshes token transparently |
-| i18n | Custom `createT()` with 481+ keys (ES/EN) | No runtime dependency; trivial to extend; dialect-aware (rioplatense) |
+| i18n | Custom `createT()` with 475 keys (ES/EN) | No runtime dependency; trivial to extend; dialect-aware (rioplatense) |
 | Testing | Vitest (unit, 36 tests) + Playwright (E2E) | Vitest for fast feedback on pure functions; Playwright for full-stack flows |
 | RLS security | `app_metadata.org_id` (not `user_metadata`) | `user_metadata` is user-editable; `app_metadata` is service-role-only |
 | Conflict detection | 3-way merge with `base_state` | 2-way "pick one side" can't auto-merge non-overlapping changes |
@@ -212,4 +212,4 @@ The `match_contacts` RPC returns results above a configurable cosine similarity 
 | HubSpot webhook | `app/api/webhooks/hubspot/route.ts` |
 | DB migrations | `supabase/migrations/` (001–016) |
 | Unit tests | `tests/unit/` (5 files, 36 tests) |
-| E2E tests | `tests/e2e/` (13 spec files) |
+| E2E tests | `tests/e2e/` (11 spec files) |
